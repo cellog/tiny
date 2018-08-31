@@ -1,5 +1,6 @@
 import Provider from "./Provider.jsx";
-import Consumer from "./Consumer.jsx";
+import StateConsumer from "./StateConsumer.jsx";
+import ActionConsumer from "./ActionConsumer.jsx";
 import React from "react";
 import { render } from "react-dom";
 
@@ -12,14 +13,14 @@ function dec(state) {
 }
 
 const Button = ({ action, children }) => (
-  <Consumer
+  <ActionConsumer
     render={({ actions }) => (
       <button onClick={actions[action]}>{children}</button>
     )}
   />
 );
 
-const Counter = () => <Consumer render={({ state }) => state} />;
+const Counter = () => <StateConsumer render={counter => counter} />;
 
 const App = () => (
   <Provider initialState={0} actions={{ inc, dec }}>

@@ -1,14 +1,13 @@
 import React from "react";
-import { bothContext } from "./Provider.jsx";
+import { stateContext } from "./Provider.jsx";
 
-export default class Consumer extends React.Component {
+export default class StateConsumer extends React.Component {
   static defaultProps = {
-    context: bothContext
+    context: stateContext
   };
 
-  renderChild = ({ state, actions }) => {
-    const props = this.props;
-    return this.props.render({ state, props, actions });
+  renderChild = state => {
+    return this.props.render(state);
   };
 
   render() {
