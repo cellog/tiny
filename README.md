@@ -1,2 +1,0 @@
-# tiny
-Created with CodeSandbox
