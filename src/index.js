@@ -1,16 +1,16 @@
-import Provider from "./Provider.jsx";
-import StateConsumer from "./StateConsumer.jsx";
-import ActionConsumer from "./ActionConsumer.jsx";
-import React from "react";
-import { render } from "react-dom";
-const $$observable = Symbol("observable");
+import Provider from "./Provider.jsx"
+import StateConsumer from "./StateConsumer.jsx"
+import ActionConsumer from "./ActionConsumer.jsx"
+import React from "react"
+import { render } from "react-dom"
+const $$observable = Symbol("observable")
 
 function inc(state) {
-  return { counter: state.counter + 1 };
+  return { counter: state.counter + 1 }
 }
 
 function dec(state) {
-  return { counter: state.counter - 1 };
+  return { counter: state.counter - 1 }
 }
 
 const Button = ({ action, children }) => (
@@ -19,36 +19,36 @@ const Button = ({ action, children }) => (
       <button onClick={actions[action]}>{children}</button>
     )}
   />
-);
+)
 
-let cancel;
+let cancel
 function startCounting(state) {
-  let timeout;
-  console.log("start");
+  let timeout
+  console.log("start")
   return {
     [$$observable]: () => this,
     subscribe(observer) {
-      console.log("o", observer);
-      timeout = setInterval(() => observer.next(), 1000);
-      return { unsubscribe: () => clearInterval(timeout) };
+      console.log("o", observer)
+      timeout = setInterval(() => observer.next(), 1000)
+      return { unsubscribe: () => clearInterval(timeout) }
     }
-  };
+  }
 }
 
 function stopCounting(state) {
-  console.log(cancel);
-  if (cancel) cancel();
-  cancel = false;
-  return null;
+  console.log(cancel)
+  if (cancel) cancel()
+  cancel = false
+  return null
 }
 
-startCounting.resolver = inc;
+startCounting.resolver = inc
 startCounting.saveUnsubscribe = result => {
-  console.log(result);
-  cancel = result.unsubscribe;
-};
+  console.log(result)
+  cancel = result.unsubscribe
+}
 
-const Counter = () => <StateConsumer render={counter => counter} />;
+const Counter = () => <StateConsumer render={counter => counter} />
 
 const App = () => (
   <Provider
@@ -68,6 +68,6 @@ const App = () => (
       <Counter />
     </div>
   </Provider>
-);
+)
 
-render(<App />, document.body);
+render(<App />, document.body)

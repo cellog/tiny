@@ -1,15 +1,15 @@
-import React from "react";
-import { bothContext } from "./Provider.jsx";
+import React from "react"
+import { bothContext } from "./Provider.jsx"
 
 export default class Consumer extends React.Component {
   static defaultProps = {
     context: bothContext
-  };
+  }
 
   renderChild = ({ state, actions }) => {
-    const props = this.props;
-    return this.props.render({ state, props, actions });
-  };
+    const props = this.props
+    return this.props.render({ state, props, actions })
+  }
 
   render() {
     if (this.props.observedBits) {
@@ -19,12 +19,12 @@ export default class Consumer extends React.Component {
         >
           {this.renderChild}
         </this.props.context.Consumer>
-      );
+      )
     }
     return (
       <this.props.context.Consumer>
         {this.renderChild}
       </this.props.context.Consumer>
-    );
+    )
   }
 }
