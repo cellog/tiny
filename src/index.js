@@ -3,7 +3,7 @@ import StateConsumer from "./StateConsumer.jsx"
 import ActionConsumer from "./ActionConsumer.jsx"
 import React from "react"
 import { render } from "react-dom"
-const $$observable = Symbol("observable")
+const $$observable = Symbol.for("observable")
 
 function inc(state) {
   return { counter: state.counter + 1 }
@@ -48,11 +48,11 @@ startCounting.saveUnsubscribe = result => {
   cancel = result.unsubscribe
 }
 
-const Counter = () => <StateConsumer render={counter => counter} />
+const Counter = () => <StateConsumer render={state => state.counter} />
 
 const App = () => (
   <Provider
-    initialState={0}
+    initialState={{counter: 0}}
     actions={{
       inc,
       dec,

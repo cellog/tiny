@@ -4,7 +4,7 @@ const dispatchContext = React.createContext()
 const stateContext = React.createContext()
 const bothContext = React.createContext()
 export { dispatchContext, stateContext, bothContext }
-const $$observable = Symbol("observable")
+const $$observable = Symbol.for("observable")
 
 export default class Provider extends Component {
   static defaultProps = {
