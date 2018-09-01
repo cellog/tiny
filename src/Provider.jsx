@@ -4,6 +4,7 @@ const dispatchContext = React.createContext();
 const stateContext = React.createContext();
 const bothContext = React.createContext();
 export { dispatchContext, stateContext, bothContext };
+const $$observable = Symbol("observable");
 
 export default class Provider extends Component {
   static defaultProps = {
@@ -21,27 +22,51 @@ export default class Provider extends Component {
       error: false
     };
     this.error = false;
+    this.subscribed = [];
   }
 
-  updateState = (action, resolver, ...args) => {
+  updateState = (action, ...args) => {
+    const { resolver, saveUnsubscribe } = action;
     this.setState(state => {
       let ret;
       try {
         ret = action(state.state, ...args);
+        if (ret === null) return ret;
       } catch (error) {
         return { error };
       }
+      const resolved = result => {
+        console.log(result);
+        return this.mounted && resolver
+          ? this.updateState(resolver, result)
+          : result;
+      };
+      const handleError = error => this.mounted && this.setState({ error });
+      console.log("in", ret);
       if (ret.then instanceof Function) {
-        ret
-          .then(
-            result =>
-              this.mounted && resolver
-                ? this.updateState(resolver, result)
-                : result
-          )
-          .catch(error => this.mounted && this.setState({ error }));
+        // promise
+        ret.then(resolved).catch(handleError);
+        return null;
+      } else if (ret.subscribe instanceof Function) {
+        if (ret[$$observable]) {
+          // observable
+          const observer = {
+            next: resolved,
+            error: handleError
+          };
+          console.log("in o", observer, ret);
+          const result = ret.subscribe(observer);
+          saveUnsubscribe ? saveUnsubscribe(result) : null;
+          this.subscribed.push(result);
+          return null;
+        }
+        // pub/sub event emitter
+        const result = ret.subscribe(resolved);
+        saveUnsubscribe ? saveUnsubscribe(result) : null;
+        this.subscribed.push(result);
         return null;
       }
+      // synchronous reducer
       return { state: ret };
     }, this.props.monitor ? () => this.props.monitor(this.state.state) : undefined);
   };
@@ -51,7 +76,7 @@ export default class Provider extends Component {
       (boundActions, action) => ({
         ...boundActions,
         [action]: (...args) => {
-          this.updateState(actions[action], actions[action].resolver, ...args);
+          this.updateState(actions[action], ...args);
         }
       }),
       {}
@@ -64,6 +89,8 @@ export default class Provider extends Component {
 
   componentWillUnmount() {
     this.mounted = false;
+    this.subscribed.forEach(unsubscribe => unsubscribe());
+    this.subscribed = [];
   }
 
   componentDidUpdate(lastProps) {
