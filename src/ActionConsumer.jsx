@@ -7,7 +7,7 @@ export default class ActionConsumer extends React.Component {
   }
 
   renderChild = actions => {
-    return this.props.render({ actions })
+    return this.props.render(actions)
   }
 
   render() {

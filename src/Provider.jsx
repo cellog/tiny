@@ -4,21 +4,24 @@ const dispatchContext = React.createContext()
 const stateContext = React.createContext()
 const bothContext = React.createContext()
 export { dispatchContext, stateContext, bothContext }
-const $$observable = Symbol.for("observable")
 
 export default class Provider extends Component {
   static defaultProps = {
     dispatchContext: dispatchContext,
     stateContext: stateContext,
     bothContext: bothContext,
-    actions: []
+    actions: [],
+    asyncActions: []
   }
   constructor(props) {
     super(props)
     this.mounted = false
     this.state = {
       state: this.props.initialState,
-      actions: this.bindActions(this.props.actions),
+      actions: {
+        actions: this.bindActions(this.props.actions),
+        async: this.bindAsyncHandlers(this.props.async),
+      },
       error: false
     }
     this.error = false
@@ -26,48 +29,16 @@ export default class Provider extends Component {
   }
 
   updateState = (action, ...args) => {
-    const { resolver, saveUnsubscribe } = action
     this.setState(state => {
       let ret
       try {
         ret = action(state.state, ...args)
         if (ret === null) return ret
+
+        return { state: ret }
       } catch (error) {
         return { error }
       }
-      const resolved = result => {
-        console.log(result)
-        return this.mounted && resolver
-          ? this.updateState(resolver, result)
-          : result
-      }
-      const handleError = error => this.mounted && this.setState({ error })
-      console.log("in", ret)
-      if (ret.then instanceof Function) {
-        // promise
-        ret.then(resolved).catch(handleError)
-        return null
-      } else if (ret.subscribe instanceof Function) {
-        if (ret[$$observable]) {
-          // observable
-          const observer = {
-            next: resolved,
-            error: handleError
-          }
-          console.log("in o", observer, ret)
-          const result = ret.subscribe(observer)
-          saveUnsubscribe ? saveUnsubscribe(result) : null
-          this.subscribed.push(result)
-          return null
-        }
-        // pub/sub event emitter
-        const result = ret.subscribe(resolved)
-        saveUnsubscribe ? saveUnsubscribe(result) : null
-        this.subscribed.push(result)
-        return null
-      }
-      // synchronous reducer
-      return { state: ret }
     }, this.props.monitor ? () => this.props.monitor(this.state.state) : undefined)
   }
 
@@ -77,6 +48,21 @@ export default class Provider extends Component {
         ...boundActions,
         [action]: (...args) => {
           this.updateState(actions[action], ...args)
+        }
+      }),
+      {}
+    )
+  }
+
+  bindAsyncHandlers(actions) {
+    return Object.keys(actions).reduce(
+      (boundActions, action) => ({
+        ...boundActions,
+        [action]: (...args) => {
+          const sequence = actions[action]
+          const asyncThing = sequence.make(...args)
+          const initThing = sequence.init(asyncThing, this.state.actions, ...args)
+          return sequence.start(asyncThing, initThing)
         }
       }),
       {}
@@ -94,10 +80,16 @@ export default class Provider extends Component {
   }
 
   componentDidUpdate(lastProps) {
-    if (lastProps.actions !== this.props.actions) {
-      this.setState({ actions: this.bindActions(this.props.actions) })
+    if (lastProps.actions !== this.props.actions || lastProps.async !== this.props.async) {
+      this.setState({
+        actions: {
+          async: this.bindAsyncHandlers(this.props.async),
+          actions: this.bindActions(this.props.actions)
+        }
+      })
     }
   }
+
   render() {
     if (this.state.error) throw this.state.error
     const { dispatchContext, stateContext, bothContext } = this.props
