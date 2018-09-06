@@ -25,7 +25,7 @@ export default class Provider extends Component {
       error: false
     }
     this.error = false
-    this.subscribed = []
+    this.liftedSetStates = {}
   }
 
   updateState = (action, ...args) => {
@@ -35,6 +35,17 @@ export default class Provider extends Component {
         ret = action(state.state, ...args)
         if (ret === null) return ret
 
+        // check for lifted states
+        if (this.liftedSetStates.length) {
+          const keys = Object.keys(this.liftedSetStates)
+          for (let i = 0; i < keys.length; i++) {
+            const key = keys[i]
+            if (ret[key] !== state[key]) {
+              this.liftedSetStates[key](ret[key])
+              break
+            }
+          }
+        }
         return { state: ret }
       } catch (error) {
         return { error }
@@ -43,6 +54,9 @@ export default class Provider extends Component {
   }
 
   bindActions(actions) {
+    if (actions.liftState) {
+      throw new Error('liftState is a reserved action')
+    }
     return Object.keys(actions).reduce(
       (boundActions, action) => ({
         ...boundActions,
@@ -50,7 +64,18 @@ export default class Provider extends Component {
           this.updateState(actions[action], ...args)
         }
       }),
-      {}
+      {
+        liftState: (key, substate, setState) => {
+          if (!this.mounted) return
+          if (!this.liftedSetStates[key]) {
+            this.liftedSetStates[key] = setState
+          }
+          this.updateState((state, key, substate) => {
+            if (state[key] === substate) return null
+            return { [key]: substate }
+          })
+        }
+      }
     )
   }
 
@@ -62,7 +87,7 @@ export default class Provider extends Component {
           const sequence = actions[action]
           const asyncThing = sequence.make(...args)
           const initThing = sequence.init(asyncThing, this.state.actions, ...args)
-          return sequence.start(asyncThing, initThing)
+          return sequence.start(asyncThing, initThing, ...args)
         }
       }),
       {}
@@ -75,8 +100,7 @@ export default class Provider extends Component {
 
   componentWillUnmount() {
     this.mounted = false
-    this.subscribed.forEach(unsubscribe => unsubscribe())
-    this.subscribed = []
+    this.liftedSetStates = {}
   }
 
   componentDidUpdate(lastProps) {
