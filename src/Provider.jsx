@@ -25,7 +25,6 @@ export default class Provider extends Component {
       error: false
     }
     this.error = false
-    this.liftedSetStates = {}
   }
 
   updateState = (action, ...args) => {
@@ -65,15 +64,24 @@ export default class Provider extends Component {
         }
       }),
       {
-        liftState: (key, substate, setState) => {
+        liftState: (key, substate) => {
           if (!this.mounted) return
-          if (!this.liftedSetStates[key]) {
-            this.liftedSetStates[key] = setState
-          }
           this.updateState((state, key, substate) => {
             if (state[key] === substate) return null
             return { [key]: substate }
           })
+        },
+        liftActions: (key, actions) => {
+          if (!this.mounted) return
+          this.setState(state => ({
+            actions: {
+              ...state.actions,
+              actions: {
+                ...state.actions.actions,
+                [key]: actions
+              }
+            }
+          }))
         }
       }
     )
