@@ -11,7 +11,7 @@ export default class Provider extends Component {
     stateContext: stateContext,
     bothContext: bothContext,
     actions: [],
-    asyncActions: []
+    asyncActionGenerators: []
   }
 
   constructor(props) {
@@ -21,7 +21,7 @@ export default class Provider extends Component {
       state: this.props.initialState,
       actions: {
         actions: this.bindActions(this.props.actions),
-        async: this.bindAsyncHandlers(this.props.async),
+        generators: this.bindAsyncHandlers(this.props.asyncActionGenerators),
       },
       error: false
     }
@@ -95,9 +95,9 @@ export default class Provider extends Component {
         ...boundActions,
         [action]: (...args) => {
           const sequence = actions[action]
-          const asyncThing = sequence.make(...args)
-          const initThing = sequence.init(asyncThing, this.state.actions, ...args)
-          return sequence.start(asyncThing, initThing, this.state.actions, ...args)
+          const asyncActionGenerator = sequence.make(...args)
+          const initializedGenerator = sequence.init(asyncActionGenerator, this.state.actions, ...args)
+          return sequence.start(asyncActionGenerator, initializedGenerator, this.state.actions, ...args)
         }
       }),
       {}
@@ -114,10 +114,10 @@ export default class Provider extends Component {
   }
 
   componentDidUpdate(lastProps) {
-    if (lastProps.actions !== this.props.actions || lastProps.async !== this.props.async) {
+    if (lastProps.actions !== this.props.actions || lastProps.asyncActionGenerators !== this.props.asyncActionGenerators) {
       this.setState({
         actions: {
-          async: this.bindAsyncHandlers(this.props.async),
+          generators: this.bindAsyncHandlers(this.props.asyncActionGenerators),
           actions: this.bindActions(this.props.actions)
         }
       })
