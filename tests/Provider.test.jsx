@@ -99,4 +99,60 @@ describe('Provider', () => {
     expect(test.queryByText('other2')).not.toBe(null)
     expect(action2.mock.calls[0]).toEqual([{ test: 'other' }, 'other'])
   })
+  test('async handlers', () => {
+    const initial = {
+      test: 'hi'
+    }
+
+    const action = jest.fn((state, something) => {
+      return {
+        test: something
+      }
+    })
+
+    const dummyAsync = {}
+    const dummyInit = {}
+    const async = {
+      make: jest.fn((...args) => {
+        return dummyAsync
+      }),
+      init: jest.fn((makeReturn, actions, ...args) => {
+        return dummyInit
+      }),
+      start: jest.fn((makeReturn, initReturn, actions, ...arg) => {
+        return 5
+      })
+    }
+    let ret
+
+    const test = rtl.render(<Provider initialState={initial} actions={{ action }} async={{ async }}>
+      <bothContext.Consumer>
+        {({ state, actions }) => {
+          return (
+            <div>
+              <button onClick={() => ret = actions.async.async('argument', 'two')}>click</button>
+            </div>
+          )
+        }}
+      </bothContext.Consumer>
+    </Provider>)
+
+    rtl.fireEvent.click(test.getByText('click'))
+
+    expect(ret).toBe(5)
+    expect(async.make.mock.calls[0]).toEqual(['argument', 'two'])
+
+    expect(async.init.mock.calls[0][0]).toEqual(dummyAsync)
+    expect(Object.keys(async.init.mock.calls[0][1].actions)).toEqual(['liftState', 'liftActions', 'action'])
+    expect(Object.keys(async.init.mock.calls[0][1].async)).toEqual(['async'])
+    expect(async.init.mock.calls[0][2]).toEqual('argument')
+    expect(async.init.mock.calls[0][3]).toEqual('two')
+
+    expect(async.start.mock.calls[0][0]).toBe(dummyAsync)
+    expect(async.start.mock.calls[0][1]).toBe(dummyInit)
+    expect(Object.keys(async.start.mock.calls[0][2].actions)).toEqual(['liftState', 'liftActions', 'action'])
+    expect(Object.keys(async.start.mock.calls[0][2].async)).toEqual(['async'])
+    expect(async.start.mock.calls[0][3]).toEqual('argument')
+    expect(async.start.mock.calls[0][4]).toEqual('two')
+  })
 })

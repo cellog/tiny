@@ -97,7 +97,7 @@ export default class Provider extends Component {
           const sequence = actions[action]
           const asyncThing = sequence.make(...args)
           const initThing = sequence.init(asyncThing, this.state.actions, ...args)
-          return sequence.start(asyncThing, initThing, actions, ...args)
+          return sequence.start(asyncThing, initThing, this.state.actions, ...args)
         }
       }),
       {}
