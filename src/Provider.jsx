@@ -13,6 +13,7 @@ export default class Provider extends Component {
     actions: [],
     asyncActions: []
   }
+
   constructor(props) {
     super(props)
     this.mounted = false
@@ -25,6 +26,7 @@ export default class Provider extends Component {
       error: false
     }
     this.error = false
+    this.liftedSetStates = {}
   }
 
   updateState = (action, ...args) => {
@@ -35,7 +37,7 @@ export default class Provider extends Component {
         if (ret === null) return ret
 
         // check for lifted states
-        if (this.liftedSetStates.length) {
+        if (Object.keys(this.liftedSetStates).length) {
           const keys = Object.keys(this.liftedSetStates)
           for (let i = 0; i < keys.length; i++) {
             const key = keys[i]
@@ -52,7 +54,7 @@ export default class Provider extends Component {
     }, this.props.monitor ? () => this.props.monitor(this.state.state) : undefined)
   }
 
-  bindActions(actions) {
+  bindActions(actions = []) {
     if (actions.liftState) {
       throw new Error('liftState is a reserved action')
     }
@@ -87,7 +89,7 @@ export default class Provider extends Component {
     )
   }
 
-  bindAsyncHandlers(actions) {
+  bindAsyncHandlers(actions = []) {
     return Object.keys(actions).reduce(
       (boundActions, action) => ({
         ...boundActions,
@@ -95,7 +97,7 @@ export default class Provider extends Component {
           const sequence = actions[action]
           const asyncThing = sequence.make(...args)
           const initThing = sequence.init(asyncThing, this.state.actions, ...args)
-          return sequence.start(asyncThing, initThing, ...args)
+          return sequence.start(asyncThing, initThing, actions, ...args)
         }
       }),
       {}
