@@ -1,4 +1,5 @@
 import React, { Component } from "react"
+import invariant from "invariant"
 
 const dispatchContext = React.createContext()
 const stateContext = React.createContext()
@@ -41,10 +42,16 @@ export default class Provider extends Component {
     }, this.props.monitor ? () => this.props.monitor(action, this.state.state) : undefined)
   }
 
-  bindActions(actions = []) {
-    if (actions.liftState) {
-      throw new Error("liftState is a reserved action")
-    }
+  bindActions(actions) {
+    console.log(actions)
+    invariant(
+      !actions.liftState,
+      `action "liftState" is a reserved action, and cannot be overridden`
+    )
+    invariant(
+      !actions.liftActions,
+      `action "liftActions" is a reserved action, and cannot be overridden`
+    )
     return Object.keys(actions).reduce(
       (boundActions, action) => ({
         ...boundActions,

@@ -5,63 +5,71 @@ import Provider, {
   dispatchContext,
   bothContext
 } from "../src/Provider"
-import "jest-dom"
+import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
 
 describe("Provider correctness", () => {
-  class Mine extends React.Component {
-    constructor(props) {
-      super(props)
-      this.state = {
-        hi: "there"
-      }
-      this.sayHi = hi =>
-        this.setState({ hi }, () => this.props.liftState("mine", this.state))
-    }
-
-    render() {
-      return (
-        <div>
-          <button onClick={() => this.props.liftState("mine", this.state)}>
-            click
-          </button>
-          <button onClick={() => this.setState({ hi: "wow" })}>change</button>
-          <button onClick={() => this.props.sayHi("foo")}>do foo</button>
-          <button
-            onClick={() =>
-              this.props.liftActions("mine", { sayHi: this.sayHi })
-            }
-          >
-            lift actions
-          </button>
-          <button onClick={() => this.props.liftActions("mine", false)}>
-            remove actions
-          </button>
-          <div>{this.props.sayHi ? "has it!" : "does not have it"}</div>
-          <div>local: {this.state.hi}</div>
-          <div>global: {this.props.state.mine && this.props.state.mine.hi}</div>
-        </div>
-      )
-    }
-  }
-  function TestLifting() {
-    return (
-      <Provider initialState={{}}>
-        <bothContext.Consumer>
-          {({ state, actions }) => {
-            return (
-              <Mine
-                liftState={actions.actions.liftState}
-                liftActions={actions.actions.liftActions}
-                sayHi={actions.actions.mine && actions.actions.mine.sayHi}
-                state={state}
-              />
-            )
-          }}
-        </bothContext.Consumer>
+  describe("contexts", () => {
+    const ContextTester = ({ children }) => (
+      <Provider
+        initialState={{ test: "thing" }}
+        actions={{ one: () => null }}
+        asyncActionGenerators={{ one: { make() {}, init() {}, start() {} } }}
+      >
+        {children}
       </Provider>
     )
-  }
+    test("stateContext", () => {
+      const tester = rtl.render(
+        <ContextTester>
+          <stateContext.Consumer>
+            {state => <div data-testid="state">{JSON.stringify(state)}</div>}
+          </stateContext.Consumer>
+        </ContextTester>
+      )
+      expect(tester.getByTestId("state")).toHaveTextContent(
+        JSON.stringify({ test: "thing" })
+      )
+    })
+    test("dispatchContext", () => {
+      const tester = rtl.render(
+        <ContextTester>
+          <dispatchContext.Consumer>
+            {actions => (
+              <div data-testid="state">
+                {JSON.stringify(Object.keys(actions.actions)) +
+                  JSON.stringify(Object.keys(actions.generators))}
+              </div>
+            )}
+          </dispatchContext.Consumer>
+        </ContextTester>
+      )
+      expect(tester.getByTestId("state")).toHaveTextContent(
+        JSON.stringify(["liftState", "liftActions", "one"]) +
+          JSON.stringify(["one"])
+      )
+    })
+    test("bothContext", () => {
+      const tester = rtl.render(
+        <ContextTester>
+          <bothContext.Consumer>
+            {({ state, actions }) => (
+              <div data-testid="state">
+                {JSON.stringify(state) +
+                  JSON.stringify(Object.keys(actions.actions)) +
+                  JSON.stringify(Object.keys(actions.generators))}
+              </div>
+            )}
+          </bothContext.Consumer>
+        </ContextTester>
+      )
+      expect(tester.getByTestId("state")).toHaveTextContent(
+        JSON.stringify({ test: "thing" }) +
+          JSON.stringify(["liftState", "liftActions", "one"]) +
+          JSON.stringify(["one"])
+      )
+    })
+  })
 
   test("initial state", () => {
     const initial = {
@@ -251,73 +259,130 @@ describe("Provider correctness", () => {
       expect(async.start.mock.calls[0][4]).toEqual("two")
     })
   })
-  describe("liftState", () => {
-    test("liftState sets global state", async () => {
-      const tester = rtl.render(<TestLifting />)
-      expect(tester.queryByText("local: there")).not.toBe(null)
-      expect(tester.queryByText("global:")).not.toBe(null)
+  describe("lifting", () => {
+    class Mine extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = {
+          hi: "there"
+        }
+        this.sayHi = hi =>
+          this.setState({ hi }, () => this.props.liftState("mine", this.state))
+      }
 
-      rtl.fireEvent.click(tester.getByText("click"))
-      await rtl.waitForElement(() => tester.getByText("global: there"))
-      expect(tester.queryByText("local: there")).not.toBe(null)
-      expect(tester.queryByText("global: there")).not.toBe(null)
+      render() {
+        return (
+          <div>
+            <button onClick={() => this.props.liftState("mine", this.state)}>
+              click
+            </button>
+            <button onClick={() => this.setState({ hi: "wow" })}>change</button>
+            <button onClick={() => this.props.sayHi("foo")}>do foo</button>
+            <button
+              onClick={() =>
+                this.props.liftActions("mine", { sayHi: this.sayHi })
+              }
+            >
+              lift actions
+            </button>
+            <button onClick={() => this.props.liftActions("mine", false)}>
+              remove actions
+            </button>
+            <div>{this.props.sayHi ? "has it!" : "does not have it"}</div>
+            <div>local: {this.state.hi}</div>
+            <div>
+              global: {this.props.state.mine && this.props.state.mine.hi}
+            </div>
+          </div>
+        )
+      }
+    }
+    function TestLifting() {
+      return (
+        <Provider initialState={{}}>
+          <bothContext.Consumer>
+            {({ state, actions }) => {
+              return (
+                <Mine
+                  liftState={actions.actions.liftState}
+                  liftActions={actions.actions.liftActions}
+                  sayHi={actions.actions.mine && actions.actions.mine.sayHi}
+                  state={state}
+                />
+              )
+            }}
+          </bothContext.Consumer>
+        </Provider>
+      )
+    }
+    describe("liftState", () => {
+      test("liftState sets global state", async () => {
+        const tester = rtl.render(<TestLifting />)
+        expect(tester.queryByText("local: there")).not.toBe(null)
+        expect(tester.queryByText("global:")).not.toBe(null)
+
+        rtl.fireEvent.click(tester.getByText("click"))
+        await rtl.waitForElement(() => tester.getByText("global: there"))
+        expect(tester.queryByText("local: there")).not.toBe(null)
+        expect(tester.queryByText("global: there")).not.toBe(null)
+      })
+      test("liftState responds to changes to local state", async () => {
+        const tester = rtl.render(<TestLifting />)
+        expect(tester.queryByText("local: there")).not.toBe(null)
+        expect(tester.queryByText("global:")).not.toBe(null)
+
+        rtl.fireEvent.click(tester.getByText("click"))
+        await rtl.waitForElement(() => tester.getByText("global: there"))
+        expect(tester.queryByText("local: there")).not.toBe(null)
+        expect(tester.queryByText("global: there")).not.toBe(null)
+
+        rtl.fireEvent.click(tester.getByText("change"))
+        await rtl.waitForElement(() => tester.getByText("local: wow"))
+        expect(tester.queryByText("local: wow")).not.toBe(null)
+
+        rtl.fireEvent.click(tester.getByText("click"))
+        await rtl.waitForElement(() => tester.getByText("global: wow"))
+        expect(tester.queryByText("global: wow")).not.toBe(null)
+      })
     })
-    test("liftState responds to changes to local state", async () => {
-      const tester = rtl.render(<TestLifting />)
-      expect(tester.queryByText("local: there")).not.toBe(null)
-      expect(tester.queryByText("global:")).not.toBe(null)
+    describe("liftActions", () => {
+      test("liftActions provides keyed actions", async () => {
+        const tester = rtl.render(<TestLifting />)
+        expect(tester.queryByText("does not have it")).not.toBe(null)
 
-      rtl.fireEvent.click(tester.getByText("click"))
-      await rtl.waitForElement(() => tester.getByText("global: there"))
-      expect(tester.queryByText("local: there")).not.toBe(null)
-      expect(tester.queryByText("global: there")).not.toBe(null)
+        rtl.fireEvent.click(tester.getByText("lift actions"))
 
-      rtl.fireEvent.click(tester.getByText("change"))
-      await rtl.waitForElement(() => tester.getByText("local: wow"))
-      expect(tester.queryByText("local: wow")).not.toBe(null)
+        await rtl.waitForElement(() => tester.getByText("has it!"))
+        expect(tester.queryByText("has it!")).not.toBe(null)
+      })
+      test("lifted action works", async () => {
+        const tester = rtl.render(<TestLifting />)
 
-      rtl.fireEvent.click(tester.getByText("click"))
-      await rtl.waitForElement(() => tester.getByText("global: wow"))
-      expect(tester.queryByText("global: wow")).not.toBe(null)
-    })
-  })
-  describe("liftActions", () => {
-    test("liftActions provides keyed actions", async () => {
-      const tester = rtl.render(<TestLifting />)
-      expect(tester.queryByText("does not have it")).not.toBe(null)
+        rtl.fireEvent.click(tester.getByText("lift actions"))
 
-      rtl.fireEvent.click(tester.getByText("lift actions"))
+        await rtl.waitForElement(() => tester.getByText("has it!"))
+        rtl.fireEvent.click(tester.getByText("do foo"))
 
-      await rtl.waitForElement(() => tester.getByText("has it!"))
-      expect(tester.queryByText("has it!")).not.toBe(null)
-    })
-    test("lifted action works", async () => {
-      const tester = rtl.render(<TestLifting />)
+        await rtl.waitForElement(() => tester.getByText("local: foo"))
+        expect(tester.queryByText("local: foo")).not.toBe(null)
 
-      rtl.fireEvent.click(tester.getByText("lift actions"))
+        await rtl.waitForElement(() => tester.getByText("global: foo"))
+        expect(tester.queryByText("global: foo")).not.toBe(null)
+      })
+      test("removing lifted actions works", async () => {
+        const tester = rtl.render(<TestLifting />)
+        expect(tester.queryByText("does not have it")).not.toBe(null)
 
-      await rtl.waitForElement(() => tester.getByText("has it!"))
-      rtl.fireEvent.click(tester.getByText("do foo"))
+        rtl.fireEvent.click(tester.getByText("lift actions"))
 
-      await rtl.waitForElement(() => tester.getByText("local: foo"))
-      expect(tester.queryByText("local: foo")).not.toBe(null)
+        await rtl.waitForElement(() => tester.getByText("has it!"))
+        expect(tester.queryByText("has it!")).not.toBe(null)
 
-      await rtl.waitForElement(() => tester.getByText("global: foo"))
-      expect(tester.queryByText("global: foo")).not.toBe(null)
-    })
-    test("removing lifted actions works", async () => {
-      const tester = rtl.render(<TestLifting />)
-      expect(tester.queryByText("does not have it")).not.toBe(null)
+        rtl.fireEvent.click(tester.getByText("remove actions"))
 
-      rtl.fireEvent.click(tester.getByText("lift actions"))
-
-      await rtl.waitForElement(() => tester.getByText("has it!"))
-      expect(tester.queryByText("has it!")).not.toBe(null)
-
-      rtl.fireEvent.click(tester.getByText("remove actions"))
-
-      await rtl.waitForElement(() => tester.getByText("does not have it"))
-      expect(tester.queryByText("does not have it")).not.toBe(null)
+        await rtl.waitForElement(() => tester.getByText("does not have it"))
+        expect(tester.queryByText("does not have it")).not.toBe(null)
+      })
     })
   })
   describe("monitor", () => {
@@ -405,5 +470,21 @@ describe("Provider correctness", () => {
     } finally {
       console.error = error
     }
+  })
+  describe("errors", () => {
+    test("overriding liftState", () => {
+      expect(() =>
+        rtl.render(<Provider actions={{ liftState: () => null }} />)
+      ).toThrow(
+        'action "liftState" is a reserved action, and cannot be overridden'
+      )
+    })
+    test("overriding liftActions", () => {
+      expect(() =>
+        rtl.render(<Provider actions={{ liftActions: () => null }} />)
+      ).toThrow(
+        'action "liftActions" is a reserved action, and cannot be overridden'
+      )
+    })
   })
 })
