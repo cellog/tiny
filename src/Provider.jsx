@@ -21,12 +21,11 @@ export default class Provider extends Component {
       state: this.props.initialState,
       actions: {
         actions: this.bindActions(this.props.actions),
-        generators: this.bindAsyncHandlers(this.props.asyncActionGenerators),
+        generators: this.bindAsyncHandlers(this.props.asyncActionGenerators)
       },
       error: false
     }
     this.error = false
-    this.liftedSetStates = {}
   }
 
   updateState = (action, ...args) => {
@@ -35,28 +34,16 @@ export default class Provider extends Component {
       try {
         ret = action(state.state, ...args)
         if (ret === null) return ret
-
-        // check for lifted states
-        if (Object.keys(this.liftedSetStates).length) {
-          const keys = Object.keys(this.liftedSetStates)
-          for (let i = 0; i < keys.length; i++) {
-            const key = keys[i]
-            if (ret[key] !== state[key]) {
-              this.liftedSetStates[key](ret[key])
-              break
-            }
-          }
-        }
         return { state: ret }
       } catch (error) {
         return { error }
       }
-    }, this.props.monitor ? () => this.props.monitor(this.state.state) : undefined)
+    }, this.props.monitor ? () => this.props.monitor(action, this.state.state) : undefined)
   }
 
   bindActions(actions = []) {
     if (actions.liftState) {
-      throw new Error('liftState is a reserved action')
+      throw new Error("liftState is a reserved action")
     }
     return Object.keys(actions).reduce(
       (boundActions, action) => ({
@@ -68,13 +55,30 @@ export default class Provider extends Component {
       {
         liftState: (key, substate) => {
           if (!this.mounted) return
-          this.updateState((state, key, substate) => {
-            if (state[key] === substate) return null
-            return { [key]: substate }
-          }, key, substate)
+          this.updateState(
+            (state, key, substate) => {
+              if (state[key] === substate) return null
+              return { [key]: substate }
+            },
+            key,
+            substate
+          )
         },
         liftActions: (key, actions) => {
           if (!this.mounted) return
+          if (!actions) {
+            this.setState(state => {
+              const actions = { ...state.actions.actions }
+              delete actions[key]
+              return {
+                actions: {
+                  ...state.actions,
+                  actions
+                }
+              }
+            })
+            return
+          }
           this.setState(state => ({
             actions: {
               ...state.actions,
@@ -96,8 +100,17 @@ export default class Provider extends Component {
         [action]: (...args) => {
           const sequence = actions[action]
           const asyncActionGenerator = sequence.make(...args)
-          const initializedGenerator = sequence.init(asyncActionGenerator, this.state.actions, ...args)
-          return sequence.start(asyncActionGenerator, initializedGenerator, this.state.actions, ...args)
+          const initializedGenerator = sequence.init(
+            asyncActionGenerator,
+            this.state.actions,
+            ...args
+          )
+          return sequence.start(
+            asyncActionGenerator,
+            initializedGenerator,
+            this.state.actions,
+            ...args
+          )
         }
       }),
       {}
@@ -110,11 +123,13 @@ export default class Provider extends Component {
 
   componentWillUnmount() {
     this.mounted = false
-    this.liftedSetStates = {}
   }
 
   componentDidUpdate(lastProps) {
-    if (lastProps.actions !== this.props.actions || lastProps.asyncActionGenerators !== this.props.asyncActionGenerators) {
+    if (
+      lastProps.actions !== this.props.actions ||
+      lastProps.asyncActionGenerators !== this.props.asyncActionGenerators
+    ) {
       this.setState({
         actions: {
           generators: this.bindAsyncHandlers(this.props.asyncActionGenerators),
