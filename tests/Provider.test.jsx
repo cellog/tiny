@@ -159,4 +159,46 @@ describe('Provider correctness', () => {
       expect(async.start.mock.calls[0][4]).toEqual('two')
     })
   })
+  describe('liftState', () => {
+    class Mine extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = {
+          hi: 'there'
+        }
+      }
+
+      render() {
+        return (
+          <div>
+            <button onClick={() => this.props.liftState('mine', this.state)}>click</button>
+            <button onClick={() => this.setState({ hi: 'wow' })}>change</button>
+            <div>local: {this.state.hi}</div>
+            <div>global: {this.props.state.mine && this.props.state.mine.hi}</div>
+          </div>
+        )
+      }
+    }
+    function Config() {
+      return (
+        <Provider initialState={{}}>
+          <bothContext.Consumer>
+            {({ state, actions }) => {
+              return <Mine liftState={actions.actions.liftState} state={state} />
+            }}
+          </bothContext.Consumer>
+        </Provider>
+      )
+    }
+    test('liftState sets global state', () => {
+      const tester = rtl.render(<Config />)
+      expect(tester.queryByText('local: there')).not.toBe(null)
+      expect(tester.queryByText('global:')).not.toBe(null)
+
+      rtl.fireEvent.click(tester.getByText('click'))
+      rtl.waitForElement(() => rtl.getByText('global: there'))
+      expect(tester.queryByText('local: there')).not.toBe(null)
+      expect(tester.queryByText('global: there')).not.toBe(null)
+    })
+  })
 })

@@ -71,7 +71,7 @@ export default class Provider extends Component {
           this.updateState((state, key, substate) => {
             if (state[key] === substate) return null
             return { [key]: substate }
-          })
+          }, key, substate)
         },
         liftActions: (key, actions) => {
           if (!this.mounted) return
