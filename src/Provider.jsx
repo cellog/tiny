@@ -49,6 +49,7 @@ export default class Provider extends Component {
       (boundActions, action) => ({
         ...boundActions,
         [action]: (...args) => {
+          if (!this.mounted) return
           this.updateState(actions[action], ...args)
         }
       }),
