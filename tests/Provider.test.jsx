@@ -7,6 +7,7 @@ import Provider, {
 } from "../src/Provider"
 import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
+import "./setup"
 
 describe("Provider correctness", () => {
   describe("contexts", () => {
@@ -473,17 +474,63 @@ describe("Provider correctness", () => {
   })
   describe("errors", () => {
     test("overriding liftState", () => {
-      expect(() =>
-        rtl.render(<Provider actions={{ liftState: () => null }} />)
-      ).toThrow(
-        'action "liftState" is a reserved action, and cannot be overridden'
+      expect(<Provider actions={{ liftState: () => null }} />).toThrowInRender(
+        /action "liftState" is a reserved action, and cannot be overridden/
       )
     })
     test("overriding liftActions", () => {
-      expect(() =>
-        rtl.render(<Provider actions={{ liftActions: () => null }} />)
-      ).toThrow(
-        'action "liftActions" is a reserved action, and cannot be overridden'
+      expect(
+        <Provider actions={{ liftActions: () => null }} />
+      ).toThrowInRender(
+        /action "liftActions" is a reserved action, and cannot be overridden/
+      )
+    })
+    test("async action is not an object", () => {
+      expect(
+        <Provider asyncActionGenerators={{ blah: false }} />
+      ).toThrowInRender(
+        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      )
+    })
+    test("async action is missing make", () => {
+      expect(
+        <Provider asyncActionGenerators={{ blah: { init() {}, start() {} } }} />
+      ).toThrowInRender(
+        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      )
+    })
+    test("async action is missing init", () => {
+      expect(
+        <Provider asyncActionGenerators={{ blah: { make() {}, start() {} } }} />
+      ).toThrowInRender(
+        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      )
+    })
+    test("async action is missing start", () => {
+      expect(
+        <Provider asyncActionGenerators={{ blah: { make() {}, init() {} } }} />
+      ).toThrowInRender(
+        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      )
+    })
+    test("action is not a function", () => {
+      expect(<Provider actions={{ blah: false }} />).toThrowInRender(
+        /action "blah" must be a function/
+      )
+    })
+    test("actions is null", () => {
+      expect(<Provider actions={null} />).toThrowInRender(
+        /actions must be an object, was passed null/
+      )
+    })
+    test("actions is number", () => {
+      expect(<Provider actions={5} />).toThrowInRender(
+        /actions must be an object, was passed a number/
+      )
+    })
+    test("actions is a function", () => {
+      expect(<Provider actions={() => null} />).toThrowInRender(
+        /actions must be an object, was passed a function/
       )
     })
   })

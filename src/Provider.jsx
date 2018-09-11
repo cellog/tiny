@@ -43,23 +43,34 @@ export default class Provider extends Component {
   }
 
   bindActions(actions) {
-    console.log(actions)
     invariant(
-      !actions.liftState,
+      typeof actions === "object" && actions !== null,
+      `actions must be an object, was passed ${
+        actions === null ? "null" : "a " + typeof actions
+      }`
+    )
+    invariant(
+      actions.liftState === undefined,
       `action "liftState" is a reserved action, and cannot be overridden`
     )
     invariant(
-      !actions.liftActions,
+      actions.liftActions === undefined,
       `action "liftActions" is a reserved action, and cannot be overridden`
     )
     return Object.keys(actions).reduce(
-      (boundActions, action) => ({
-        ...boundActions,
-        [action]: (...args) => {
-          if (!this.mounted) return
-          this.updateState(actions[action], ...args)
+      (boundActions, action) => {
+        invariant(
+          typeof actions[action] === "function",
+          `action "${action}" must be a function`
+        )
+        return {
+          ...boundActions,
+          [action]: (...args) => {
+            if (!this.mounted) return
+            this.updateState(actions[action], ...args)
+          }
         }
-      }),
+      },
       {
         liftState: (key, substate) => {
           if (!this.mounted) return
@@ -102,11 +113,18 @@ export default class Provider extends Component {
   }
 
   bindAsyncHandlers(actions = []) {
-    return Object.keys(actions).reduce(
-      (boundActions, action) => ({
+    return Object.keys(actions).reduce((boundActions, action) => {
+      const sequence = actions[action]
+      invariant(
+        sequence &&
+          typeof sequence.make === "function" &&
+          typeof sequence.init === "function" &&
+          typeof sequence.start === "function",
+        `async action generator "${action}" must by an object, with members "make", "init" and "start"`
+      )
+      return {
         ...boundActions,
         [action]: (...args) => {
-          const sequence = actions[action]
           const asyncActionGenerator = sequence.make(...args)
           const initializedGenerator = sequence.init(
             asyncActionGenerator,
@@ -120,9 +138,8 @@ export default class Provider extends Component {
             ...args
           )
         }
-      }),
-      {}
-    )
+      }
+    }, {})
   }
 
   componentDidMount() {
