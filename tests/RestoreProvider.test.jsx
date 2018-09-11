@@ -5,7 +5,6 @@ import SubProvider from "../src/SubProvider"
 import RestoreProvider from "../src/RestoreProvider"
 import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
-import "./setup"
 
 describe("RestoreProvider", () => {
   test("restoreContext from parent", async () => {
