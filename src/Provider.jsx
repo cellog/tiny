@@ -30,17 +30,17 @@ export default class Provider extends Component {
     this.error = false
   }
 
-  updateState = (action, ...args) => {
+  updateState = (name, action, ...args) => {
     this.setState(state => {
       let ret
       try {
         ret = action(state.state, ...args)
         if (ret === null) return ret
-        return { state: ret }
+        return { state: Object.assign({}, state.state, ret) }
       } catch (error) {
         return { error }
       }
-    }, this.props.monitor ? () => this.props.monitor(action, this.state.state) : undefined)
+    }, this.props.monitor ? () => this.props.monitor(name, action, this.state.state) : undefined)
   }
 
   bindActions(actions) {
@@ -68,7 +68,7 @@ export default class Provider extends Component {
           ...boundActions,
           [action]: (...args) => {
             if (!this.mounted) return
-            this.updateState(actions[action], ...args)
+            this.updateState(action, actions[action], ...args)
           }
         }
       },
@@ -76,6 +76,7 @@ export default class Provider extends Component {
         liftState: (key, substate) => {
           if (!this.mounted) return
           this.updateState(
+            "liftState",
             (state, key, substate) => {
               if (state[key] === substate) return null
               return { [key]: substate }
@@ -96,18 +97,29 @@ export default class Provider extends Component {
                   actions
                 }
               }
-            })
+            }, this.props.monitor ? () => this.props.monitor("liftActions", false, this.state.state, this.state.actions.actions) : undefined)
             return
           }
-          this.setState(state => ({
-            actions: {
-              ...state.actions,
+          this.setState(
+            state => ({
               actions: {
-                ...state.actions.actions,
-                [key]: actions
+                ...state.actions,
+                actions: {
+                  ...state.actions.actions,
+                  [key]: actions
+                }
               }
-            }
-          }))
+            }),
+            this.props.monitor
+              ? () =>
+                  this.props.monitor(
+                    "liftActions",
+                    false,
+                    this.state.state,
+                    this.state.actions.actions
+                  )
+              : undefined
+          )
         }
       }
     )
