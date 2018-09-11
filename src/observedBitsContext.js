@@ -1,45 +1,46 @@
-import { createContext } from "react";
+import { createContext } from "react"
 
 export function arrayIndexMapper(index) {
-  return 1 << index % 30;
+  return 1 << index % 30
 }
 
 export function arrayMapper(length) {
-  const ret = [];
+  const ret = []
   for (let i = 0; i < length; i++) {
-    ret.push(arrayIndexMapper(i));
+    ret.push(arrayIndexMapper(i))
   }
-  return ret;
+  return ret
 }
 
 export function objectMapper(indices) {
   return indices.reduce((map, item, i) => {
     if (item.reduce instanceof Function) {
-      const struct = map[item[0]] || {};
-      let pointer = struct;
+      const struct = map[item[0]] || {}
+      let pointer = struct
       for (let idx = 1; idx < item.length; idx++) {
-        pointer[item[idx]] = pointer[item[idx]] || {};
+        pointer[item[idx]] = pointer[item[idx]] || {}
         if (idx === item.length - 1) {
-          pointer[item[idx]] = arrayIndexMapper(i);
+          pointer[item[idx]] = arrayIndexMapper(i)
         }
-        pointer = pointer[item[idx]];
+        pointer = pointer[item[idx]]
       }
       return {
         ...map,
         [item[0]]: struct
-      };
+      }
     }
     return {
       ...map,
-      item: arrayIndexMapper(i)
-    };
-  }, {});
+      [item]: arrayIndexMapper(i)
+    }
+  }, {})
 }
 
 export function objectKeysToArray(object) {
+  if (!object) return []
   return Object.keys(object).reduce((indices, key) => {
     if (
-      object !== null &&
+      object[key] !== null &&
       typeof object[key] === "object" &&
       Object.keys(object[key]).length
     ) {
@@ -49,100 +50,103 @@ export function objectKeysToArray(object) {
           key,
           ...(nested.reduce instanceof Function ? nested : [nested])
         ])
-      ];
+      ]
     }
-    return [...indices, key];
-  }, []);
+    return [...indices, key]
+  }, [])
 }
 
 export function objectKeyValue(map, key, throws = false, i = 0) {
   if (key.reduce instanceof Function) {
-    if (undefined === map[key[i]]) {
-      if (throws) {
-        console.log(map, key, i, key[i]);
-        throw new Error(`Invalid key, map value does not exist: ${key[i]}`);
+    if (throws) {
+      if (undefined === map[key[i]]) {
+        throw new Error(`Invalid key, map value does not exist: ${key[i]}`)
       }
-      return undefined;
+      if (typeof map[key] === "object") {
+        throw new Error(`Invalid key, map key is not a leaf: "${key}"`)
+      }
     }
-    if (i === key.length - 1) return map[key[i]];
-    console.log(map, map[key[i]]);
-    return objectKeyValue(map[key[i]], key, throws, i + 1);
+    if (i === key.length - 1) return map[key[i]]
+    return objectKeyValue(map[key[i]], key, throws, i + 1)
   }
   if (throws) {
     if (map[key] === undefined) {
-      throw new Error(`Invalid key, map value does not exist: ${key}`);
+      throw new Error(`Invalid key, map value does not exist: "${key}"`)
+    }
+    if (typeof map[key] === "object") {
+      throw new Error(`Invalid key, map key is not a leaf: "${key}"`)
     }
   }
-  return map[key];
+  return map[key]
 }
 
 export function arrayKeyValue(map, key, throws = false) {
   if (key > map.length) {
     if (throws) {
-      throw new Error(`Array key out of bounds: ${key}`);
+      throw new Error(`Array key out of bounds: ${key}`)
     }
-    return 0;
+    return 0
   }
-  return map[key];
+  return map[key]
 }
 
 const mapobservedBitMapper = map => (prev, next) => {
-  const prevState = prev.state;
-  const nextState = next.state;
+  const prevState = prev.state
+  const nextState = next.state
 
   return map.reduce((bits, index) => {
     if (map.getValue(prevState, index) !== map.getValue(nextState, index)) {
-      return map.getValue(map, index, true);
+      return map.getValue(map, index, true)
     }
-  }, 0);
-};
+  }, 0)
+}
 
 export function makeArrayMapper(length) {
-  const _map = arrayMapper(length);
+  const _map = arrayMapper(length)
   const map = {
     reduce: _map.reduce.bind(_map),
     getValue(array, index, throws) {
-      return arrayKeyValue(array, index, throws);
+      return arrayKeyValue(array, index, throws)
     },
     getBits(index) {
-      return _map[index];
+      return _map[index]
     },
     context() {
-      return _context;
+      return _context
     }
-  };
-  const _context = createContext(null, mapobservedBitMapper(map));
-  return map;
+  }
+  const _context = createContext(null, mapobservedBitMapper(map))
+  return map
 }
 
 export function makeObjectMapper(legend) {
-  const _indices = objectKeysToArray(legend);
-  const _map = objectMapper(_indices);
+  const _indices = objectKeysToArray(legend)
+  const _map = objectMapper(_indices)
   function getValue(obj, index, throws) {
-    const value = objectKeyValue(obj, index, throws);
-    if (typeof value === "number") return value;
+    const value = objectKeyValue(obj, index, throws)
+    if (typeof value === "number") return value
     if (throws) {
       throw new Error(
         `map did not map to an index, mapped to: ${JSON.stringify(
           value
         )} with index ${_indices[index]}`
-      );
+      )
     }
   }
   const map = {
     reduce: _indices.reduce.bind(_indices),
     getValue: getValue,
     getBits(index) {
-      return getValue(_map, index, true);
+      return getValue(_map, index, true)
     },
     context() {
-      return _context;
+      return _context
     }
-  };
-  const _context = createContext(null, mapobservedBitMapper(map));
-  return map;
+  }
+  const _context = createContext(null, mapobservedBitMapper(map))
+  return map
 }
 
 export default function makeMapperContext(map) {
-  return createContext(null, makeObjectMapper(map));
+  return createContext(null, makeObjectMapper(map))
 }
