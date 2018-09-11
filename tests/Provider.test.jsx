@@ -3,7 +3,8 @@ import * as rtl from "react-testing-library"
 import Provider, {
   stateContext,
   dispatchContext,
-  bothContext
+  bothContext,
+  restoreContext
 } from "../src/Provider"
 import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
@@ -11,10 +12,14 @@ import "./setup"
 
 describe("Provider correctness", () => {
   describe("contexts", () => {
-    const ContextTester = ({ children }) => (
+    const ContextTester = ({
+      children,
+      initial = { test: "thing" },
+      actions = { one: () => null }
+    }) => (
       <Provider
-        initialState={{ test: "thing" }}
-        actions={{ one: () => null }}
+        initialState={initial || undefined}
+        actions={actions}
         asyncActionGenerators={{ one: { make() {}, init() {}, start() {} } }}
       >
         {children}
@@ -69,6 +74,64 @@ describe("Provider correctness", () => {
           JSON.stringify(["liftState", "liftActions", "one"]) +
           JSON.stringify(["one"])
       )
+    })
+    test("restoreContext", () => {
+      const tester = rtl.render(
+        <ContextTester>
+          <restoreContext.Consumer>
+            {({ state, actions }) => (
+              <div data-testid="state">
+                {JSON.stringify(state) +
+                  JSON.stringify(Object.keys(actions.actions)) +
+                  JSON.stringify(Object.keys(actions.generators))}
+              </div>
+            )}
+          </restoreContext.Consumer>
+        </ContextTester>
+      )
+      expect(tester.getByTestId("state")).toHaveTextContent(
+        JSON.stringify({ test: "thing" }) +
+          JSON.stringify(["liftState", "liftActions", "one"]) +
+          JSON.stringify(["one"])
+      )
+    })
+    test("restoreContext from parent", async () => {
+      const tester = rtl.render(
+        <ContextTester
+          initial={"wow"}
+          actions={{
+            change() {
+              return "better!"
+            }
+          }}
+        >
+          <ContextTester initial={false}>
+            <bothContext.Consumer>
+              {({ state, actions }) => (
+                <div>
+                  <button onClick={actions.actions.change}>change</button>
+                  <div>{state}</div>
+                  <div data-testid="state">
+                    {JSON.stringify(state) +
+                      JSON.stringify(Object.keys(actions.actions)) +
+                      JSON.stringify(Object.keys(actions.generators))}
+                  </div>
+                </div>
+              )}
+            </bothContext.Consumer>
+          </ContextTester>
+        </ContextTester>
+      )
+      expect(tester.getByTestId("state")).toHaveTextContent(
+        JSON.stringify("wow") +
+          JSON.stringify(["liftState", "liftActions", "change"]) +
+          JSON.stringify(["one"])
+      )
+
+      rtl.fireEvent.click(tester.getByText("change"))
+
+      await rtl.waitForElement(() => tester.getByText("better!"))
+      expect(tester.queryByText("better!")).not.toBe(null)
     })
   })
 

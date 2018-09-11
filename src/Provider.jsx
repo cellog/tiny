@@ -4,7 +4,8 @@ import invariant from "invariant"
 const dispatchContext = React.createContext()
 const stateContext = React.createContext()
 const bothContext = React.createContext()
-export { dispatchContext, stateContext, bothContext }
+const restoreContext = React.createContext()
+export { dispatchContext, stateContext, bothContext, restoreContext }
 
 export default class Provider extends Component {
   static defaultProps = {
@@ -167,11 +168,27 @@ export default class Provider extends Component {
   render() {
     if (this.state.error) throw this.state.error
     const { dispatchContext, stateContext, bothContext } = this.props
+    if (this.props.initialState === undefined) {
+      // check to see if we have a parent context above
+      const fromParent = restoreContext.unstable_read()
+
+      if (fromParent !== undefined) {
+        return (
+          <stateContext.Provider value={fromParent.state}>
+            <bothContext.Provider value={fromParent}>
+              {this.props.children}
+            </bothContext.Provider>
+          </stateContext.Provider>
+        )
+      }
+    }
     return (
       <dispatchContext.Provider value={this.state.actions}>
         <stateContext.Provider value={this.state.state}>
           <bothContext.Provider value={this.state}>
-            {this.props.children}
+            <restoreContext.Provider value={this.state}>
+              {this.props.children}
+            </restoreContext.Provider>
           </bothContext.Provider>
         </stateContext.Provider>
       </dispatchContext.Provider>
