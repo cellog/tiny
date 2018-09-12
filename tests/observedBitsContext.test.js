@@ -36,6 +36,14 @@ describe("creating and consuming contexts using observedBits", () => {
       ["how", "are", "you", "wow"]
     ])
   })
+  test("objectKeysToArray with sub-array", () => {
+    expect(bits.objectKeysToArray({ hi: 1, there: Array(3).fill(1) })).toEqual([
+      "hi",
+      ["there", 0],
+      ["there", 1],
+      ["there", 2]
+    ])
+  })
   test("objectMapper", () => {
     expect(bits.objectMapper(bits.objectKeysToArray(null))).toEqual({})
     expect(bits.objectMapper(bits.objectKeysToArray({ hi: 1 }))).toEqual({
@@ -54,6 +62,19 @@ describe("creating and consuming contexts using observedBits", () => {
     ).toEqual({
       hi: { you: { sexy: { thing: 1 } } },
       how: { are: { you: { doing: { there: 2, good: 4 }, wow: 8 } } }
+    })
+  })
+  test("objectMapper with sub-array", () => {
+    expect(
+      bits.objectMapper(
+        bits.objectKeysToArray({
+          hi: { you: { sexy: { thing: Array(5).fill(1) } } },
+          how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+        })
+      )
+    ).toEqual({
+      hi: { you: { sexy: { thing: [1, 2, 4, 8, 16] } } },
+      how: { are: { you: { doing: { there: 32, good: 64 }, wow: 128 } } }
     })
   })
   test("objectKeyValue", () => {
@@ -103,17 +124,65 @@ describe("creating and consuming contexts using observedBits", () => {
       ).toHaveLength(40)
     })
     test("getValue", () => {
-      expect(mapper.getValue(["whatever", 2, 4], 2)).toBe(4)
-      expect(() => mapper.getValue(["whatever", 2, 4], 200, true)).toThrow()
+      expect(mapper.getValue(["whatever", 2, 4], 1, 2)).toBe(4)
+      expect(() => mapper.getValue(["whatever", 2, 4], 1, 200, true)).toThrow()
     })
     test("getBits", () => {
       expect(mapper.getBits(2)).toBe(4)
     })
-    test.skip("context", () => {
-      const FancyContext = mapper.context()
-      const updates = []
+  })
+  describe("makeObjectMapper", () => {
+    const mapper = bits.makeObjectMapper({
+      hi: { you: { sexy: { thing: Array(5).fill(1) } } },
+      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+    })
+    test("reduce", () => {
+      expect(
+        mapper.reduce((bits, index) => {
+          bits.push(index)
+          return bits
+        }, [])
+      ).toHaveLength(8)
+    })
+    test("getValue", () => {
+      const state = {
+        hi: {
+          you: {
+            sexy: {
+              thing: Array(5)
+                .fill(1)
+                .map((_, i) => i)
+            }
+          }
+        },
+        how: {
+          are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } }
+        }
+      }
+      expect(mapper.getValue(state, ["hi", "you", "sexy", "thing", 1])).toBe(1)
+      expect(mapper.getValue(state, ["hi", "you", "sexy", "thing", 0])).toBe(0)
+      expect(
+        mapper.getValue(state, ["how", "are", "you", "doing", "there"])
+      ).toBe(2)
+    })
+    test("getBits", () => {
+      expect(mapper.getBits(["hi", "you", "sexy", "thing", 1])).toBe(2)
+      expect(mapper.getBits(["hi", "you", "sexy", "thing", 0])).toBe(1)
+      expect(mapper.getBits(["how", "are", "you", "doing", "there"])).toBe(32)
+    })
+  })
+  test("context", () => {
+    const mapper = bits.makeArrayMapper(40)
+    const FancyContext = mapper.context()
+    const updates = []
 
-      function Li({ i }) {
+    class Li extends React.Component {
+      shouldComponentUpdate() {
+        return false
+      }
+
+      render() {
+        const { i } = this.props
         return (
           <FancyContext.Consumer unstable_observedBits={mapper.getBits(i)}>
             {state => {
@@ -123,70 +192,43 @@ describe("creating and consuming contexts using observedBits", () => {
           </FancyContext.Consumer>
         )
       }
-      class Updates extends React.Component {
-        constructor(props) {
-          super(props)
-          this.state = {
-            info: [
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              8,
-              9,
-              10,
-              11,
-              12,
-              13,
-              14,
-              15,
-              16,
-              17,
-              18,
-              19,
-              20,
-              21,
-              22,
-              23,
-              24,
-              25,
-              26,
-              27,
-              28,
-              29,
-              30,
-              31,
-              32,
-              33,
-              34,
-              35,
-              36,
-              37,
-              38,
-              39,
-              40
-            ]
-          }
+    }
+    class Updates extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = {
+          info: Array(40)
+            .fill(1)
+            .map((_, i) => i + 1)
         }
-
-        render() {
-          return (
-            <FancyContext.Provider value={this.state.info}>
-              <ul>
-                {this.state.info.map((thing, i) => (
-                  <Li i={i} key={i} />
-                ))}
-              </ul>
-            </FancyContext.Provider>
-          )
-        }
+        this.mapper = (thing, i) => <Li i={i} key={i} />
       }
 
-      const tester = rtl.render(<Updates />)
-    })
+      render() {
+        return (
+          <FancyContext.Provider value={this.state.info}>
+            <ul>{this.state.info.map(this.mapper)}</ul>
+            <button
+              onClick={() =>
+                this.setState(state => {
+                  const info = [...state.info]
+                  info[3] = "hji"
+                  info[27] = "wow"
+                  return { info }
+                })
+              }
+            >
+              set
+            </button>
+          </FancyContext.Provider>
+        )
+      }
+    }
+
+    const tester = rtl.render(<Updates />)
+    expect(updates.length).toBe(40)
+    rtl.fireEvent.click(tester.getByText("set"))
+    expect(updates.length).toBe(43)
   })
   test.skip("mapObservedBitMapper", () => {
     const map = bits.objectMapper(

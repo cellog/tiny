@@ -5,11 +5,9 @@ export function arrayIndexMapper(index) {
 }
 
 export function arrayMapper(length) {
-  const ret = []
-  for (let i = 0; i < length; i++) {
-    ret.push(arrayIndexMapper(i))
-  }
-  return ret
+  return Array(length)
+    .fill(1)
+    .map((_, i) => arrayIndexMapper(i))
 }
 
 export function objectMapper(indices) {
@@ -18,7 +16,13 @@ export function objectMapper(indices) {
       const struct = map[item[0]] || {}
       let pointer = struct
       for (let idx = 1; idx < item.length; idx++) {
-        pointer[item[idx]] = pointer[item[idx]] || {}
+        if (!pointer[item[idx]]) {
+          if (idx === item.length - 2 && typeof item[idx + 1] === "number") {
+            pointer[item[idx]] = []
+          } else {
+            pointer[item[idx]] = {}
+          }
+        }
         if (idx === item.length - 1) {
           pointer[item[idx]] = arrayIndexMapper(i)
         }
@@ -38,6 +42,9 @@ export function objectMapper(indices) {
 
 export function objectKeysToArray(object) {
   if (!object) return []
+  if (typeof object.reduce === "function") {
+    return object.map((_, i) => i)
+  }
   return Object.keys(object).reduce((indices, key) => {
     if (
       object[key] !== null &&
@@ -91,13 +98,17 @@ export function arrayKeyValue(map, key, throws = false) {
 }
 
 const mapObservedBitMapper = map => (prev, next) => {
-  const prevState = prev.state
-  const nextState = next.state
+  const prevState = prev
+  const nextState = next
 
-  return map.reduce((bits, index) => {
-    if (map.getValue(prevState, index) !== map.getValue(nextState, index)) {
-      return map.getValue(map, index, true)
+  return map.reduce((bits, mapper, index) => {
+    if (
+      map.getValue(prevState, mapper, index) !==
+      map.getValue(nextState, mapper, index)
+    ) {
+      return bits | map.getBits(index, true)
     }
+    return bits
   }, 0)
 }
 
@@ -105,11 +116,11 @@ export function makeArrayMapper(length) {
   const _map = arrayMapper(length)
   const map = {
     reduce: _map.reduce.bind(_map),
-    getValue(array, index, throws = false) {
+    getValue(array, key, index, throws = false) {
       return arrayKeyValue(array, index, throws)
     },
-    getBits(index) {
-      return _map[index]
+    getBits(mapper) {
+      return _map[mapper]
     },
     context() {
       return _context
@@ -122,8 +133,8 @@ export function makeArrayMapper(length) {
 export function makeObjectMapper(legend) {
   const _indices = objectKeysToArray(legend)
   const _map = objectMapper(_indices)
-  function getValue(obj, index, throws = false) {
-    const value = objectKeyValue(obj, index, throws)
+  function getValue(obj, key, index, throws = false) {
+    const value = objectKeyValue(obj, key, throws)
     if (typeof value === "number") return value
     if (throws) {
       throw new Error(
@@ -136,8 +147,8 @@ export function makeObjectMapper(legend) {
   const map = {
     reduce: _indices.reduce.bind(_indices),
     getValue: getValue,
-    getBits(index) {
-      return getValue(_map, index, true)
+    getBits(mapper) {
+      return getValue(_map, mapper, true)
     },
     context() {
       return _context
