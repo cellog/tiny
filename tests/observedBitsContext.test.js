@@ -88,8 +88,112 @@ describe("creating and consuming contexts using observedBits", () => {
   test("arrayKeyValue", () => {
     expect(bits.arrayKeyValue(bits.arrayMapper(5), 2)).toBe(4)
     expect(bits.arrayKeyValue(bits.arrayMapper(5), 8)).toBe(0)
-    expect(() => bits.arrayKeyValue(bits.arrayMapper(5), 8, throws)).toThrow(
+    expect(() => bits.arrayKeyValue(bits.arrayMapper(5), 8, true)).toThrow(
       "Array key out of bounds: 8"
+    )
+  })
+  describe("makeArrayMapper", () => {
+    const mapper = bits.makeArrayMapper(40)
+    test("reduce", () => {
+      expect(
+        mapper.reduce((bits, index) => {
+          bits.push(index)
+          return bits
+        }, [])
+      ).toHaveLength(40)
+    })
+    test("getValue", () => {
+      expect(mapper.getValue(["whatever", 2, 4], 2)).toBe(4)
+      expect(() => mapper.getValue(["whatever", 2, 4], 200, true)).toThrow()
+    })
+    test("getBits", () => {
+      expect(mapper.getBits(2)).toBe(4)
+    })
+    test.skip("context", () => {
+      const FancyContext = mapper.context()
+      const updates = []
+
+      function Li({ i }) {
+        return (
+          <FancyContext.Consumer unstable_observedBits={mapper.getBits(i)}>
+            {state => {
+              updates.push(i)
+              return <li>{state[i]}</li>
+            }}
+          </FancyContext.Consumer>
+        )
+      }
+      class Updates extends React.Component {
+        constructor(props) {
+          super(props)
+          this.state = {
+            info: [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31,
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              39,
+              40
+            ]
+          }
+        }
+
+        render() {
+          return (
+            <FancyContext.Provider value={this.state.info}>
+              <ul>
+                {this.state.info.map((thing, i) => (
+                  <Li i={i} key={i} />
+                ))}
+              </ul>
+            </FancyContext.Provider>
+          )
+        }
+      }
+
+      const tester = rtl.render(<Updates />)
+    })
+  })
+  test.skip("mapObservedBitMapper", () => {
+    const map = bits.objectMapper(
+      bits.objectKeysToArray({
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      })
     )
   })
 })

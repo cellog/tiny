@@ -90,7 +90,7 @@ export function arrayKeyValue(map, key, throws = false) {
   return map[key]
 }
 
-const mapobservedBitMapper = map => (prev, next) => {
+const mapObservedBitMapper = map => (prev, next) => {
   const prevState = prev.state
   const nextState = next.state
 
@@ -105,7 +105,7 @@ export function makeArrayMapper(length) {
   const _map = arrayMapper(length)
   const map = {
     reduce: _map.reduce.bind(_map),
-    getValue(array, index, throws) {
+    getValue(array, index, throws = false) {
       return arrayKeyValue(array, index, throws)
     },
     getBits(index) {
@@ -115,14 +115,14 @@ export function makeArrayMapper(length) {
       return _context
     }
   }
-  const _context = createContext(null, mapobservedBitMapper(map))
+  const _context = createContext(null, mapObservedBitMapper(map))
   return map
 }
 
 export function makeObjectMapper(legend) {
   const _indices = objectKeysToArray(legend)
   const _map = objectMapper(_indices)
-  function getValue(obj, index, throws) {
+  function getValue(obj, index, throws = false) {
     const value = objectKeyValue(obj, index, throws)
     if (typeof value === "number") return value
     if (throws) {
@@ -143,7 +143,7 @@ export function makeObjectMapper(legend) {
       return _context
     }
   }
-  const _context = createContext(null, mapobservedBitMapper(map))
+  const _context = createContext(null, mapObservedBitMapper(map))
   return map
 }
 
