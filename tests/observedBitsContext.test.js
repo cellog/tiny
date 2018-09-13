@@ -15,11 +15,6 @@ describe("creating and consuming contexts using observedBits", () => {
     expect(bits.arrayIndexMapper(59)).toBe(1 << 29)
     expect(bits.arrayIndexMapper(60)).toBe(1)
   })
-  test("arrayMapper", () => {
-    expect(bits.arrayMapper(1)).toEqual([1])
-    expect(bits.arrayMapper(2)).toEqual([1, 1 << 1])
-    expect(bits.arrayMapper(5)).toEqual([1, 1 << 1, 1 << 2, 1 << 3, 1 << 4])
-  })
   test("objectKeysToArray", () => {
     expect(bits.objectKeysToArray(null)).toEqual([])
     expect(bits.objectKeysToArray({ hi: 1 })).toEqual(["hi"])
@@ -107,25 +102,23 @@ describe("creating and consuming contexts using observedBits", () => {
     )
   })
   test("arrayKeyValue", () => {
-    expect(bits.arrayKeyValue(bits.arrayMapper(5), 2)).toBe(4)
-    expect(bits.arrayKeyValue(bits.arrayMapper(5), 8)).toBe(0)
-    expect(() => bits.arrayKeyValue(bits.arrayMapper(5), 8, true)).toThrow(
-      "Array key out of bounds: 8"
-    )
+    const t = new Array(5).fill(1).map((_, i) => i)
+    expect(bits.arrayKeyValue(t, 2)).toBe(2)
+    expect(bits.arrayKeyValue(t, 8)).toBe(0)
   })
   describe("makeArrayMapper", () => {
-    const mapper = bits.makeArrayMapper(40)
+    const mapper = bits.makeArrayMapper()
     test("reduce", () => {
       expect(
-        mapper.reduce((bits, index) => {
+        mapper.getReducer(new Array(40).fill(1), []).reduce((bits, index) => {
           bits.push(index)
           return bits
         }, [])
       ).toHaveLength(40)
     })
     test("getValue", () => {
-      expect(mapper.getValue(["whatever", 2, 4], 1, 2)).toBe(4)
-      expect(() => mapper.getValue(["whatever", 2, 4], 1, 200, true)).toThrow()
+      expect(mapper.getValue(["whatever", 2, 4], 2)).toBe(4)
+      expect(() => mapper.getValue(["whatever", 2, 4], 200, true)).toThrow()
     })
     test("getBits", () => {
       expect(mapper.getBits(2)).toBe(4)
@@ -138,7 +131,7 @@ describe("creating and consuming contexts using observedBits", () => {
     })
     test("reduce", () => {
       expect(
-        mapper.reduce((bits, index) => {
+        mapper.getReducer().reduce((bits, index) => {
           bits.push(index)
           return bits
         }, [])
@@ -164,6 +157,9 @@ describe("creating and consuming contexts using observedBits", () => {
       expect(
         mapper.getValue(state, ["how", "are", "you", "doing", "there"])
       ).toBe(2)
+      expect(mapper.getValue(state, 1)).toBe(1)
+      expect(mapper.getValue(state, 0)).toBe(0)
+      expect(mapper.getValue(state, 2)).toBe(2)
     })
     test("getValue 2", () => {
       const map = bits.makeObjectMapper({
@@ -190,7 +186,7 @@ describe("creating and consuming contexts using observedBits", () => {
     })
   })
   test("context", () => {
-    const mapper = bits.makeArrayMapper(40)
+    const mapper = bits.makeArrayMapper()
     const FancyContext = mapper.context()
     const updates = []
 
@@ -204,7 +200,7 @@ describe("creating and consuming contexts using observedBits", () => {
         return (
           <FancyContext.Consumer unstable_observedBits={mapper.getBits(i)}>
             {state => {
-              updates.push(i)
+              updates.push([i, mapper.getBits(i)])
               return <li>{state[i]}</li>
             }}
           </FancyContext.Consumer>
@@ -246,30 +242,50 @@ describe("creating and consuming contexts using observedBits", () => {
     const tester = rtl.render(<Updates />)
     expect(updates.length).toBe(40)
     rtl.fireEvent.click(tester.getByText("set"))
-    expect(updates.length).toBe(42)
+    expect(updates.length).toBe(43)
+    expect(updates[40]).toEqual([3, 1 << 3])
+    expect(updates[41]).toEqual([27, 1 << 27])
+    expect(updates[42]).toEqual([33, 1 << 3])
   })
-  test("mapObservedBitMapper", () => {
-    const map = bits.makeObjectMapper({
-      hi: { you: { sexy: { thing: "yowza" } } },
-      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+  describe("mapObservedBitMapper", () => {
+    test("object", () => {
+      const map = bits.makeObjectMapper({
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      })
+
+      const mapper = bits.mapObservedBitMapper(map)
+
+      const prev = {
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      }
+      const next = {
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      }
+
+      expect(mapper(prev, next)).toBe(0)
+
+      next.hi.you.sexy.thing = "baby"
+      expect(mapper(prev, next)).toBe(1)
+      next.how.are.you.wow = "baby"
+      expect(mapper(prev, next)).toBe(9)
     })
+    test("array", () => {
+      const map = bits.makeArrayMapper()
+      const mapper = bits.mapObservedBitMapper(map)
 
-    const mapper = bits.mapObservedBitMapper(map)
+      const prev = [1, 2, 3, 4]
+      const next = [1, 2, 3]
 
-    const prev = {
-      hi: { you: { sexy: { thing: "yowza" } } },
-      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
-    }
-    const next = {
-      hi: { you: { sexy: { thing: "yowza" } } },
-      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
-    }
+      expect(mapper(prev, next)).toBe(8)
+      expect(mapper(next, prev)).toBe(8)
 
-    expect(mapper(prev, next)).toBe(0)
-
-    next.hi.you.sexy.thing = "baby"
-    expect(mapper(prev, next)).toBe(1)
-    next.how.are.you.wow = "baby"
-    expect(mapper(prev, next)).toBe(9)
+      next.push(4)
+      expect(mapper(prev, next)).toBe(0)
+      next.push(5)
+      expect(mapper(prev, next)).toBe(16)
+    })
   })
 })

@@ -4,12 +4,6 @@ export function arrayIndexMapper(index) {
   return 1 << index % 30
 }
 
-export function arrayMapper(length) {
-  return Array(length)
-    .fill(1)
-    .map((_, i) => arrayIndexMapper(i))
-}
-
 export function objectMapper(indices) {
   return indices.reduce((map, item, i) => {
     if (item.reduce instanceof Function) {
@@ -100,25 +94,32 @@ export function arrayKeyValue(map, key, throws = false) {
 }
 
 export const mapObservedBitMapper = map => (prev, next) => {
-  return map.reduce((bits, mapper, index) => {
-    if (
-      map.getValue(prev, mapper, index) !== map.getValue(next, mapper, index)
-    ) {
-      return bits | map.getBits(mapper, true)
-    }
-    return bits
-  }, 0)
+  return map.getReducer(prev, next).reduce(
+    (bits, mapper, index) => {
+      if (map.getValue(prev, index) !== map.getValue(next, index)) {
+        return bits | map.getBits(index, true)
+      }
+      return bits
+    },
+    0,
+    prev,
+    next
+  )
 }
 
-export function makeArrayMapper(length) {
-  const _map = arrayMapper(length)
+export function makeArrayMapper() {
   const map = {
-    reduce: _map.reduce.bind(_map),
-    getValue(array, key, index, throws = false) {
+    getReducer: (prev, next) => {
+      if (prev.length > next.length) {
+        return prev
+      }
+      return next
+    },
+    getValue(array, index, throws = false) {
       return arrayKeyValue(array, index, throws)
     },
-    getBits(mapper) {
-      return _map[mapper]
+    getBits(index) {
+      return arrayIndexMapper(index)
     },
     context() {
       return _context
@@ -131,8 +132,9 @@ export function makeArrayMapper(length) {
 export function makeObjectMapper(legend) {
   const _indices = objectKeysToArray(legend)
   const _map = objectMapper(_indices)
-  function getValue(obj, key, index, throws = false) {
-    const value = objectKeyValue(obj, key, throws)
+  function getValue(obj, index, throws = false) {
+    const lookup = typeof index === "number" ? _indices[index] : index
+    const value = objectKeyValue(obj, lookup, throws)
     if (typeof value === "number") return value
     if (throws) {
       throw new Error(
@@ -144,10 +146,10 @@ export function makeObjectMapper(legend) {
     return value
   }
   const map = {
-    reduce: _indices.reduce.bind(_indices),
+    getReducer: () => _indices,
     getValue: getValue,
-    getBits(mapper) {
-      return getValue(_map, mapper, true)
+    getBits(index) {
+      return getValue(_map, index, true)
     },
     context() {
       return _context
