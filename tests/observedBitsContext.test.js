@@ -39,6 +39,12 @@ describe("creating and consuming contexts using observedBits", () => {
       ["there", 2]
     ])
   })
+  test("objectKeysToArray with variable-length sub-array", () => {
+    expect(bits.objectKeysToArray({ hi: 1, there: [] })).toEqual([
+      "hi",
+      ["there", []]
+    ])
+  })
   test("objectMapper", () => {
     expect(bits.objectMapper(bits.objectKeysToArray(null))).toEqual({})
     expect(bits.objectMapper(bits.objectKeysToArray({ hi: 1 }))).toEqual({
@@ -72,34 +78,70 @@ describe("creating and consuming contexts using observedBits", () => {
       how: { are: { you: { doing: { there: 32, good: 64 }, wow: 128 } } }
     })
   })
-  test("objectKeyValue", () => {
-    expect(bits.objectKeyValue({}, "oops")).toBe(undefined)
-    expect(() => bits.objectKeyValue({}, "oops", true)).toThrow(
-      'Invalid key, map value does not exist: "oops"'
-    )
+  test("objectMapper with variable-length sub-array", () => {
     const map = bits.objectMapper(
       bits.objectKeysToArray({
-        hi: { you: { sexy: { thing: "yowza" } } },
-        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+        nested: { array: [] }
       })
     )
-    expect(bits.objectKeyValue(map, ["hi", "you", "sexy", "thing"])).toBe(1)
-    expect(
-      bits.objectKeyValue(map, ["how", "are", "you", "doing", "there"])
-    ).toBe(2)
-    expect(
-      bits.objectKeyValue(map, ["how", "are", "you", "doing", "good"])
-    ).toBe(4)
-    expect(bits.objectKeyValue(map, ["how", "are", "you", "wow"])).toBe(8)
-    expect(bits.objectKeyValue(map, ["hi", "you", "sexy", "oops"])).toBe(
-      undefined
-    )
-    expect(bits.objectKeyValue(map, "hi")).toEqual({
-      you: { sexy: { thing: 1 } }
+
+    expect(map).toEqual({
+      nested: { array: [] }
     })
-    expect(() => bits.objectKeyValue(map, "hi", true)).toThrow(
-      'Invalid key, map key is not a leaf: "hi"'
-    )
+  })
+  describe("objectKeyValue", () => {
+    let map
+    beforeEach(() =>
+      (map = bits.objectMapper(
+        bits.objectKeysToArray({
+          hi: { you: { sexy: { thing: "yowza" } } },
+          how: {
+            are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } }
+          },
+          nested: { array: [] }
+        })
+      )))
+    test("errors", () => {
+      expect(bits.objectKeyValue({}, "oops")).toBe(undefined)
+      expect(() => bits.objectKeyValue({}, "oops", true)).toThrow(
+        'Invalid key, map value does not exist: "oops"'
+      )
+    })
+    test("basic", () => {
+      expect(bits.objectKeyValue(map, ["hi", "you", "sexy", "thing"])).toBe(1)
+      expect(
+        bits.objectKeyValue(map, ["how", "are", "you", "doing", "there"])
+      ).toBe(2)
+      expect(
+        bits.objectKeyValue(map, ["how", "are", "you", "doing", "good"])
+      ).toBe(4)
+      expect(bits.objectKeyValue(map, ["how", "are", "you", "wow"])).toBe(8)
+    })
+    test("undefined index", () => {
+      expect(bits.objectKeyValue(map, ["hi", "you", "sexy", "oops"])).toBe(
+        undefined
+      )
+      expect(() =>
+        bits.objectKeyValue(map, ["hi", "you", "sexy", "oops"], true)
+      ).toThrow('Invalid key, map value does not exist: "oops"')
+    })
+    test("key value for sub-tree", () => {
+      expect(bits.objectKeyValue(map, "hi")).toEqual({
+        you: { sexy: { thing: 1 } }
+      })
+      expect(() => bits.objectKeyValue(map, "hi", true)).toThrow(
+        'Invalid key, map key is not a leaf: "hi"'
+      )
+    })
+    test("indeterminate array length value, whole array", () => {
+      expect(bits.objectKeyValue(map, ["nested", "array"])).toBe(0xefff)
+    })
+    test("indeterminate array length value, specific index", () => {
+      expect(bits.objectKeyValue(map, ["nested", "array", 0])).toBe(1)
+      expect(bits.objectKeyValue(map, ["nested", "array", 1])).toBe(2)
+      expect(bits.objectKeyValue(map, ["nested", "array", 29])).toBe(0x20000000)
+      expect(bits.objectKeyValue(map, ["nested", "array", 30])).toBe(1)
+    })
   })
   test("arrayKeyValue", () => {
     const t = new Array(5).fill(1).map((_, i) => i)
@@ -125,10 +167,12 @@ describe("creating and consuming contexts using observedBits", () => {
     })
   })
   describe("makeObjectMapper", () => {
-    const mapper = bits.makeObjectMapper({
-      hi: { you: { sexy: { thing: Array(5).fill(1) } } },
-      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
-    })
+    let mapper
+    beforeEach(() =>
+      (mapper = bits.makeObjectMapper({
+        hi: { you: { sexy: { thing: Array(5).fill(1) } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      })))
     test("reduce", () => {
       expect(
         mapper.getReducer().reduce((bits, index) => {
