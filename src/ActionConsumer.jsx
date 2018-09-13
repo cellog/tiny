@@ -1,20 +1,18 @@
 import React from "react"
 import { dispatchContext } from "./Provider.jsx"
 
-export default class ActionConsumer extends React.Component {
-  static defaultProps = {
-    context: dispatchContext
-  }
+export function actionConsumer(context = dispatchContext) {
+  return class ActionConsumer extends React.Component {
+    renderChild = actions => {
+      const props = Object.assign({}, this.props)
+      delete props.render
+      return this.props.render({ actions, props })
+    }
 
-  renderChild = actions => {
-    return this.props.render(actions)
-  }
-
-  render() {
-    return (
-      <this.props.context.Consumer>
-        {this.renderChild}
-      </this.props.context.Consumer>
-    )
+    render() {
+      return <context.Consumer>{this.renderChild}</context.Consumer>
+    }
   }
 }
+
+export default actionConsumer()

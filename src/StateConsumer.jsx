@@ -1,29 +1,26 @@
 import React from "react"
 import { stateContext } from "./Provider.jsx"
 
-export default class StateConsumer extends React.Component {
-  static defaultProps = {
-    context: stateContext
-  }
-
-  renderChild = state => {
-    return this.props.render(state)
-  }
-
-  render() {
-    if (this.props.observedBits) {
-      return (
-        <this.props.context.Consumer
-          unstable_observedBits={this.props.observedBits}
-        >
-          {this.renderChild}
-        </this.props.context.Consumer>
-      )
+export function stateConsumer(context = stateContext) {
+  return class StateConsumer extends React.Component {
+    renderChild = state => {
+      const props = Object.assign({}, this.props)
+      delete props.render
+      delete props.observedBits
+      return this.props.render({ state, props })
     }
-    return (
-      <this.props.context.Consumer>
-        {this.renderChild}
-      </this.props.context.Consumer>
-    )
+
+    render() {
+      if (this.props.observedBits) {
+        return (
+          <context.Consumer unstable_observedBits={this.props.observedBits}>
+            {this.renderChild}
+          </context.Consumer>
+        )
+      }
+      return <context.Consumer>{this.renderChild}</context.Consumer>
+    }
   }
 }
+
+export default stateConsumer()
