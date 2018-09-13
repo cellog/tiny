@@ -162,4 +162,105 @@ render(<App />, div)
 ```
 
 
-Key features:
+## Key features
+
+### build local first, then lift state
+
+Build your state locally, then if another component needs access to the state, lift it up:
+
+```js
+class MyClass extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      something: 1
+    }
+    this.changeSomething = () => this.SetState({ something: 2 })
+  }
+
+  componentDidUpdate(nextProps) {
+    if (lastProps.blah !== this.props.blah) {
+      api.load(this.props.blah)
+      .then(thing => 
+        this.setState(state => {
+          return { something: state.something + thing}
+        }))
+    }
+  }
+
+  render() {
+    return (
+      <div>
+        {this.state.something}
+        <button onClick={this.changeSomething}>+</button>
+      </div>
+    )
+  }
+}
+```
+
+lift:
+
+```js
+import { lift, liftSetState } from 'tiny'
+
+
+class MyClass extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = this.props.initState('myclass', {
+      something: 1
+    })
+    this.liftedSetState = liftSetState(this, 'myclass')
+    this.changeSomething = () => this.liftedSetState({ something: 2 })
+  }
+
+
+  componentDidMount() {
+    this.props.liftActions('myclass', { changeSomething: this.changeSomething })
+  }
+
+  componentDidUpdate(nextProps) {
+    if (lastProps.blah !== this.props.blah) {
+      api.load(this.props.blah)
+      .then(thing => 
+        this.liftedSetState(state => {
+          return { something: state.something + thing}
+        }))
+    }
+  }
+
+  render() {
+    return (
+      <div>
+        {this.state.something}
+        <button onClick={this.changeSomething}>+</button>
+      </div>
+    )
+  }
+}
+
+export default lift(MyClass)
+```
+
+Now, other components can access your component's state and actions:
+
+```js
+const Fancy = ({ state, actions: { actions } }) => (
+  <div>
+    {state.myclass.something}
+    <button onClick={actions.myclass.changeSomething}>change it!</button>
+  </div>
+)
+
+const ConnectFancy = (
+  <Consumer render={Fancy} />
+)
+```
+
+### Build asynchronous action generators that are pure and testable
+
+### Build for correctness, and add speed easily later
+
+Using `SubProvider` and observed bits mappers, speed can easily be applied in components
+that render too often. No need for confusing solutions like reselect.
