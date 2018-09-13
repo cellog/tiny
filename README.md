@@ -1,3 +1,9 @@
+# Tiny
+### A tiny react-based state management library
+
+Refactor-focused, test-focused state management, with full support for asynchrony.
+
+```js
 import Provider, { async } from "./Provider.jsx"
 import StateConsumer from "./StateConsumer.jsx"
 import ActionConsumer from "./ActionConsumer.jsx"
@@ -153,3 +159,7 @@ class App extends React.Component {
 
 const div = document.body.appendChild(document.createElement("div"))
 render(<App />, div)
+```
+
+
+Key features:
