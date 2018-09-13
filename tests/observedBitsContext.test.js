@@ -4,7 +4,7 @@ import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
 import "./setup"
 
-import makeMapperContext, * as bits from "../src/observedBitsContext"
+import * as bits from "../src/observedBitsContext"
 
 describe("creating and consuming contexts using observedBits", () => {
   test("arrayIndexMapper starts at 1, wraps every 29 indices", () => {
@@ -165,6 +165,24 @@ describe("creating and consuming contexts using observedBits", () => {
         mapper.getValue(state, ["how", "are", "you", "doing", "there"])
       ).toBe(2)
     })
+    test("getValue 2", () => {
+      const map = bits.makeObjectMapper({
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      })
+
+      const prev = {
+        hi: { you: { sexy: { thing: "yowza" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      }
+      const next = {
+        hi: { you: { sexy: { thing: "baby" } } },
+        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+      }
+
+      expect(map.getValue(prev, ["hi", "you", "sexy", "thing"])).toBe("yowza")
+      expect(map.getValue(next, ["hi", "you", "sexy", "thing"])).toBe("baby")
+    })
     test("getBits", () => {
       expect(mapper.getBits(["hi", "you", "sexy", "thing", 1])).toBe(2)
       expect(mapper.getBits(["hi", "you", "sexy", "thing", 0])).toBe(1)
@@ -230,12 +248,26 @@ describe("creating and consuming contexts using observedBits", () => {
     rtl.fireEvent.click(tester.getByText("set"))
     expect(updates.length).toBe(43)
   })
-  test.skip("mapObservedBitMapper", () => {
-    const map = bits.objectMapper(
-      bits.objectKeysToArray({
-        hi: { you: { sexy: { thing: "yowza" } } },
-        how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
-      })
-    )
+  test("mapObservedBitMapper", () => {
+    const map = bits.makeObjectMapper({
+      hi: { you: { sexy: { thing: "yowza" } } },
+      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+    })
+
+    const mapper = bits.mapObservedBitMapper(map)
+
+    const prev = {
+      hi: { you: { sexy: { thing: "yowza" } } },
+      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+    }
+    const next = {
+      hi: { you: { sexy: { thing: "yowza" } } },
+      how: { are: { you: { doing: { there: 2, good: "friend" }, wow: 1 } } }
+    }
+
+    expect(mapper(prev, next)).toBe(0)
+
+    next.hi.you.sexy.thing = "baby"
+    expect(mapper(prev, next)).toBe(1)
   })
 })

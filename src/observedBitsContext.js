@@ -65,15 +65,17 @@ export function objectKeysToArray(object) {
 
 export function objectKeyValue(map, key, throws = false, i = 0) {
   if (key.reduce instanceof Function) {
-    if (throws) {
-      if (undefined === map[key[i]]) {
-        throw new Error(`Invalid key, map value does not exist: ${key[i]}`)
+    if (i === key.length - 1) {
+      if (throws) {
+        if (undefined === map[key[i]]) {
+          throw new Error(`Invalid key, map value does not exist: ${key[i]}`)
+        }
+        if (typeof map[key] === "object") {
+          throw new Error(`Invalid key, map key is not a leaf: "${key}"`)
+        }
       }
-      if (typeof map[key] === "object") {
-        throw new Error(`Invalid key, map key is not a leaf: "${key}"`)
-      }
+      return map[key[i]]
     }
-    if (i === key.length - 1) return map[key[i]]
     return objectKeyValue(map[key[i]], key, throws, i + 1)
   }
   if (throws) {
@@ -97,14 +99,10 @@ export function arrayKeyValue(map, key, throws = false) {
   return map[key]
 }
 
-const mapObservedBitMapper = map => (prev, next) => {
-  const prevState = prev
-  const nextState = next
-
+export const mapObservedBitMapper = map => (prev, next) => {
   return map.reduce((bits, mapper, index) => {
     if (
-      map.getValue(prevState, mapper, index) !==
-      map.getValue(nextState, mapper, index)
+      map.getValue(prev, mapper, index) !== map.getValue(next, mapper, index)
     ) {
       return bits | map.getBits(index, true)
     }
@@ -143,6 +141,7 @@ export function makeObjectMapper(legend) {
         )} with index ${_indices[index]}`
       )
     }
+    return value
   }
   const map = {
     reduce: _indices.reduce.bind(_indices),
@@ -156,8 +155,4 @@ export function makeObjectMapper(legend) {
   }
   const _context = createContext(null, mapObservedBitMapper(map))
   return map
-}
-
-export default function makeMapperContext(map) {
-  return createContext(null, makeObjectMapper(map))
 }
