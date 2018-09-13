@@ -104,7 +104,7 @@ export const mapObservedBitMapper = map => (prev, next) => {
     if (
       map.getValue(prev, mapper, index) !== map.getValue(next, mapper, index)
     ) {
-      return bits | map.getBits(index, true)
+      return bits | map.getBits(mapper, true)
     }
     return bits
   }, 0)

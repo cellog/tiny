@@ -246,7 +246,7 @@ describe("creating and consuming contexts using observedBits", () => {
     const tester = rtl.render(<Updates />)
     expect(updates.length).toBe(40)
     rtl.fireEvent.click(tester.getByText("set"))
-    expect(updates.length).toBe(43)
+    expect(updates.length).toBe(42)
   })
   test("mapObservedBitMapper", () => {
     const map = bits.makeObjectMapper({
@@ -269,5 +269,7 @@ describe("creating and consuming contexts using observedBits", () => {
 
     next.hi.you.sexy.thing = "baby"
     expect(mapper(prev, next)).toBe(1)
+    next.how.are.you.wow = "baby"
+    expect(mapper(prev, next)).toBe(9)
   })
 })
