@@ -1,9 +1,9 @@
 import React from "react"
-import { bothContext } from "./Provider.jsx"
+import { stateContext, dispatchContext } from "./Provider.jsx"
 
-export function consumer(context = bothContext) {
-  return class Consumer extends React.Component {
-    renderChild = ({ state, actions }) => {
+export function consumer(sc = stateContext, dc = dispatchContext) {
+  return class Consumer extends React.PureComponent {
+    renderChild = state => actions => {
       const props = Object.assign({}, this.props)
       delete props.render
       delete props.observedBits
@@ -13,12 +13,16 @@ export function consumer(context = bothContext) {
     render() {
       if (this.props.observedBits) {
         return (
-          <context.Consumer unstable_observedBits={this.props.observedBits}>
-            {this.renderChild}
-          </context.Consumer>
+          <sc.Consumer unstable_observedBits={this.props.observedBits}>
+            {state => <dc.Consumer>{this.renderChild(state)}</dc.Consumer>}
+          </sc.Consumer>
         )
       }
-      return <context.Consumer>{this.renderChild}</context.Consumer>
+      return (
+        <sc.Consumer>
+          {state => <dc.Consumer>{this.renderChild(state)}</dc.Consumer>}
+        </sc.Consumer>
+      )
     }
   }
 }

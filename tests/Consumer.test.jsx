@@ -7,7 +7,7 @@ import "react-testing-library/cleanup-after-each"
 import "./setup"
 
 describe("Consumer", () => {
-  test.only("default", () => {
+  test("default", () => {
     const tester = rtl.render(
       <Provider
         initialState={{ thing: 1 }}
@@ -28,14 +28,26 @@ describe("Consumer", () => {
   })
   test("create new consumer with consumer", () => {
     const fancy = React.createContext()
-    const SpecialConsumer = consumer(fancy)
+    const fancydispatch = React.createContext()
+    const SpecialConsumer = consumer(fancy, fancydispatch)
     const tester = rtl.render(
       <fancy.Provider value={{ hi: "there" }}>
-        <SpecialConsumer
-          render={actions => <div>{JSON.stringify(Object.keys(actions))}</div>}
-        />
+        <fancydispatch.Provider value={{ boo: "boo" }}>
+          <SpecialConsumer
+            prop={1}
+            render={stuff => <div>{JSON.stringify(stuff)}</div>}
+          />
+        </fancydispatch.Provider>
       </fancy.Provider>
     )
-    expect(tester.queryByText(JSON.stringify(["hi"]))).not.toBe(null)
+    expect(
+      tester.queryByText(
+        JSON.stringify({
+          state: { hi: "there" },
+          props: { prop: 1 },
+          actions: { boo: "boo" }
+        })
+      )
+    ).not.toBe(null)
   })
 })

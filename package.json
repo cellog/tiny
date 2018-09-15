@@ -8,14 +8,37 @@
     "build": "parcel build index.html",
     "test": "jest"
   },
+  "jest": {
+    "transform": {
+      "^.+\\.jsx?$": "babel-jest"
+    }
+  },
+  "browserslist": {
+    "development": [
+      "last 2 chrome versions",
+      "last 2 firefox versions",
+      "last 2 edge versions"
+    ],
+    "production": [
+      ">0.25%",
+      "not op_mini all",
+      "ie 11"
+    ]
+  },
   "dependencies": {
-    "invariant": "^2.2.4"
+    "invariant": "^2.2.4",
+    "prop-types": "^15.6.2"
   },
   "peerDependencies": {
     "react": "^16.4.2 || ^16.5",
     "react-dom": "^16.4.2 || ^16.5"
   },
   "devDependencies": {
+    "@babel/cli": "^7.0.0",
+    "@babel/core": "^7.0.1",
+    "@babel/preset-env": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "babel-jest": "^23.6.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-plugin-transform-runtime": "^6.23.0",
@@ -25,7 +48,9 @@
     "prettier": "^1.14.2",
     "react": "16.5",
     "react-dom": "16.5",
-    "react-testing-library": "^5.0.1"
+    "react-testing-library": "^5.0.1",
+    "rollup": "^0.65.2",
+    "rollup-plugin-babel": "^4.0.3"
   },
   "keywords": []
 }

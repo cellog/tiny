@@ -1,6 +1,6 @@
 import React from "react"
 import * as rtl from "react-testing-library"
-import Provider, { stateContext, bothContext } from "../src/Provider"
+import Provider, { stateContext, dispatchContext } from "../src/Provider"
 import SubProvider from "../src/SubProvider"
 import RestoreProvider from "../src/RestoreProvider"
 import "jest-dom/extend-expect"
@@ -30,40 +30,26 @@ describe("RestoreProvider", () => {
         }}
       >
         <SubProvider selector={state => state.thing}>
-          <bothContext.Consumer>
+          <dispatchContext.Consumer>
             {({ state, actions }) => (
               <div>
-                <button onClick={actions.actions.plusThing}>plusThing</button>
-                <div data-testid="substate1">{JSON.stringify(state)}</div>
+                <button onClick={actions.plusThing}>plusThing</button>
+                <button onClick={actions.minusAnother}>minusAnother</button>
               </div>
             )}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
           <stateContext.Consumer>
             {state => (
               <div>
-                <div data-testid="substate2">{JSON.stringify(state)}</div>
+                <div data-testid="substate">{JSON.stringify(state)}</div>
               </div>
             )}
           </stateContext.Consumer>
           <RestoreProvider>
-            <bothContext.Consumer>
-              {({ state, actions }) => (
-                <div>
-                  <button onClick={actions.actions.minusAnother}>
-                    minusAnother
-                  </button>
-                  <div data-testid="restorestate1">
-                    {JSON.stringify(state) +
-                      JSON.stringify(Object.keys(actions.actions)) +
-                      JSON.stringify(Object.keys(actions.generators))}
-                  </div>
-                </div>
-              )}
-            </bothContext.Consumer>
             <stateContext.Consumer>
               {state => (
                 <div>
-                  <div data-testid="restorestate2">{JSON.stringify(state)}</div>
+                  <div data-testid="restorestate">{JSON.stringify(state)}</div>
                 </div>
               )}
             </stateContext.Consumer>
@@ -71,38 +57,16 @@ describe("RestoreProvider", () => {
         </SubProvider>
       </ContextTester>
     )
-    expect(tester.getByTestId("substate1")).toHaveTextContent(JSON.stringify(1))
-    expect(tester.getByTestId("substate2")).toHaveTextContent(JSON.stringify(1))
-    expect(tester.getByTestId("restorestate1")).toHaveTextContent(
-      JSON.stringify({ thing: 1, another: 4 }) +
-        JSON.stringify([
-          "liftState",
-          "liftActions",
-          "plusThing",
-          "minusAnother"
-        ]) +
-        JSON.stringify(["one"])
-    )
-    expect(tester.getByTestId("restorestate2")).toHaveTextContent(
+    expect(tester.getByTestId("substate")).toHaveTextContent(JSON.stringify(1))
+    expect(tester.getByTestId("restorestate")).toHaveTextContent(
       JSON.stringify({ thing: 1, another: 4 })
     )
 
     rtl.fireEvent.click(tester.getByText("plusThing"))
 
     await rtl.waitForElement(() => tester.getByText("2"))
-    expect(tester.getByTestId("substate1")).toHaveTextContent(JSON.stringify(2))
-    expect(tester.getByTestId("substate2")).toHaveTextContent(JSON.stringify(2))
-    expect(tester.getByTestId("restorestate1")).toHaveTextContent(
-      JSON.stringify({ thing: 2, another: 4 }) +
-        JSON.stringify([
-          "liftState",
-          "liftActions",
-          "plusThing",
-          "minusAnother"
-        ]) +
-        JSON.stringify(["one"])
-    )
-    expect(tester.getByTestId("restorestate2")).toHaveTextContent(
+    expect(tester.getByTestId("substate")).toHaveTextContent(JSON.stringify(2))
+    expect(tester.getByTestId("restorestate")).toHaveTextContent(
       JSON.stringify({ thing: 2, another: 4 })
     )
 
@@ -111,19 +75,8 @@ describe("RestoreProvider", () => {
     await rtl.waitForElement(() =>
       tester.getByText(JSON.stringify({ thing: 2, another: 3 }))
     )
-    expect(tester.getByTestId("substate1")).toHaveTextContent(JSON.stringify(2))
-    expect(tester.getByTestId("substate2")).toHaveTextContent(JSON.stringify(2))
-    expect(tester.getByTestId("restorestate1")).toHaveTextContent(
-      JSON.stringify({ thing: 2, another: 3 }) +
-        JSON.stringify([
-          "liftState",
-          "liftActions",
-          "plusThing",
-          "minusAnother"
-        ]) +
-        JSON.stringify(["one"])
-    )
-    expect(tester.getByTestId("restorestate2")).toHaveTextContent(
+    expect(tester.getByTestId("substate")).toHaveTextContent(JSON.stringify(2))
+    expect(tester.getByTestId("restorestate")).toHaveTextContent(
       JSON.stringify({ thing: 2, another: 3 })
     )
   })

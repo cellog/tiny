@@ -2,7 +2,7 @@ import React from "react"
 import { stateContext } from "./Provider.jsx"
 
 export function stateConsumer(context = stateContext) {
-  return class StateConsumer extends React.Component {
+  return class StateConsumer extends React.PureComponent {
     renderChild = state => {
       const props = Object.assign({}, this.props)
       delete props.render

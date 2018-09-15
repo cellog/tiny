@@ -1,17 +1,16 @@
 import React, { Component } from "react"
+import { func, objectOf, shape } from "prop-types"
 import invariant from "invariant"
 
 const dispatchContext = React.createContext()
 const stateContext = React.createContext()
-const bothContext = React.createContext()
 const restoreContext = React.createContext()
-export { dispatchContext, stateContext, bothContext, restoreContext }
+export { dispatchContext, stateContext, restoreContext }
 
 export default class Provider extends Component {
   static defaultProps = {
     dispatchContext: dispatchContext,
     stateContext: stateContext,
-    bothContext: bothContext,
     actions: [],
     asyncActionGenerators: []
   }
@@ -38,7 +37,7 @@ export default class Provider extends Component {
         if (ret === null) return ret
         return { state: Object.assign({}, state.state, ret) }
       } catch (error) {
-        return { error }
+        return { __error }
       }
     }, this.props.monitor ? () => this.props.monitor(name, action, this.state.state) : undefined)
   }
@@ -125,7 +124,7 @@ export default class Provider extends Component {
     )
   }
 
-  bindAsyncHandlers(actions = []) {
+  bindAsyncHandlers(actions) {
     return Object.keys(actions).reduce((boundActions, action) => {
       const sequence = actions[action]
       invariant(
@@ -178,30 +177,14 @@ export default class Provider extends Component {
   }
 
   render() {
-    if (this.state.error) throw this.state.error
-    const { dispatchContext, stateContext, bothContext } = this.props
-    if (this.props.initialState === undefined) {
-      // check to see if we have a parent context above
-      const fromParent = restoreContext.unstable_read()
-
-      if (fromParent !== undefined) {
-        return (
-          <stateContext.Provider value={fromParent.state}>
-            <bothContext.Provider value={fromParent}>
-              {this.props.children}
-            </bothContext.Provider>
-          </stateContext.Provider>
-        )
-      }
-    }
+    if (this.state.__error) throw this.state.__error
+    const { dispatchContext, stateContext } = this.props
     return (
       <dispatchContext.Provider value={this.state.actions}>
         <stateContext.Provider value={this.state.state}>
-          <bothContext.Provider value={this.state}>
-            <restoreContext.Provider value={this.state}>
-              {this.props.children}
-            </restoreContext.Provider>
-          </bothContext.Provider>
+          <restoreContext.Provider value={this.state.state}>
+            {this.props.children}
+          </restoreContext.Provider>
         </stateContext.Provider>
       </dispatchContext.Provider>
     )

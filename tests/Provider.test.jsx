@@ -3,7 +3,6 @@ import * as rtl from "react-testing-library"
 import Provider, {
   stateContext,
   dispatchContext,
-  bothContext,
   restoreContext
 } from "../src/Provider"
 import "jest-dom/extend-expect"
@@ -55,44 +54,16 @@ describe("Provider correctness", () => {
           JSON.stringify(["one"])
       )
     })
-    test("bothContext", () => {
-      const tester = rtl.render(
-        <ContextTester>
-          <bothContext.Consumer>
-            {({ state, actions }) => (
-              <div data-testid="state">
-                {JSON.stringify(state) +
-                  JSON.stringify(Object.keys(actions.actions)) +
-                  JSON.stringify(Object.keys(actions.generators))}
-              </div>
-            )}
-          </bothContext.Consumer>
-        </ContextTester>
-      )
-      expect(tester.getByTestId("state")).toHaveTextContent(
-        JSON.stringify({ test: "thing" }) +
-          JSON.stringify(["liftState", "liftActions", "one"]) +
-          JSON.stringify(["one"])
-      )
-    })
     test("restoreContext", () => {
       const tester = rtl.render(
         <ContextTester>
           <restoreContext.Consumer>
-            {({ state, actions }) => (
-              <div data-testid="state">
-                {JSON.stringify(state) +
-                  JSON.stringify(Object.keys(actions.actions)) +
-                  JSON.stringify(Object.keys(actions.generators))}
-              </div>
-            )}
+            {state => <div data-testid="state">{JSON.stringify(state)}</div>}
           </restoreContext.Consumer>
         </ContextTester>
       )
       expect(tester.getByTestId("state")).toHaveTextContent(
-        JSON.stringify({ test: "thing" }) +
-          JSON.stringify(["liftState", "liftActions", "one"]) +
-          JSON.stringify(["one"])
+        JSON.stringify({ test: "thing" })
       )
     })
   })
@@ -132,18 +103,18 @@ describe("Provider correctness", () => {
 
       const test = rtl.render(
         <Provider initialState={initial} actions={{ action }}>
-          <bothContext.Consumer>
-            {({ state, actions }) => {
+          <dispatchContext.Consumer>
+            {({ actions }) => {
               return (
                 <div>
-                  <button onClick={() => actions.actions.action("other")}>
-                    click
-                  </button>
-                  <div>{state.test}</div>
+                  <button onClick={() => actions.action("other")}>click</button>
+                  <stateContext.Consumer>
+                    {state => <div>{state.test}</div>}
+                  </stateContext.Consumer>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
         </Provider>
       )
 
@@ -175,18 +146,18 @@ describe("Provider correctness", () => {
 
       const get = action => (
         <Provider initialState={initial} actions={{ action }}>
-          <bothContext.Consumer>
-            {({ state, actions }) => {
+          <dispatchContext.Consumer>
+            {({ actions }) => {
               return (
                 <div>
-                  <button onClick={() => actions.actions.action("other")}>
-                    click
-                  </button>
-                  <div>{state.test}</div>
+                  <button onClick={() => actions.action("other")}>click</button>
+                  <stateContext.Consumer>
+                    {state => <div>{state.test}</div>}
+                  </stateContext.Consumer>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
         </Provider>
       )
 
@@ -212,17 +183,23 @@ describe("Provider correctness", () => {
             }
           }}
         >
-          <bothContext.Consumer>
-            {({ state, actions }) => {
+          <dispatchContext.Consumer>
+            {({ actions }) => {
               return (
                 <div>
-                  <button onClick={() => actions.actions.add()}>add</button>
-                  <div>{state.one}</div>
-                  <div data-testid="state">{JSON.stringify(state)}</div>
+                  <button onClick={() => actions.add()}>add</button>
+                  <stateContext.Consumer>
+                    {state => (
+                      <React.Fragment>
+                        <div>{state.one}</div>
+                        <div data-testid="state">{JSON.stringify(state)}</div>
+                      </React.Fragment>
+                    )}
+                  </stateContext.Consumer>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
         </Provider>
       )
 
@@ -245,21 +222,18 @@ describe("Provider correctness", () => {
             }
           }}
         >
-          <bothContext.Consumer>
-            {({ state, actions }) => {
+          <dispatchContext.Consumer>
+            {({ actions }) => {
               return (
                 <div>
-                  <button onClick={actions.actions.add}>add</button>
-                  <button onClick={actions.actions.minus}>minus</button>
-                  <div>{state.one}</div>
-                  <div>{state.five}</div>
-                  <div data-testid="state">{JSON.stringify(state)}</div>
+                  <button onClick={actions.add}>add</button>
+                  <button onClick={actions.minus}>minus</button>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
           <restoreContext.Consumer>
-            {({ state, actions }) => {
+            {state => {
               return (
                 <div>
                   <div data-testid="staterestore">{JSON.stringify(state)}</div>
@@ -280,9 +254,8 @@ describe("Provider correctness", () => {
       )
 
       rtl.fireEvent.click(tester.getByText("add"))
-      await rtl.waitForElement(() => tester.getByText("2"))
-      expect(tester.getByTestId("state")).toHaveTextContent(
-        JSON.stringify({ one: 2, five: 5 })
+      await rtl.waitForElement(() =>
+        tester.getByText(JSON.stringify({ one: 2, five: 5 }))
       )
       expect(tester.getByTestId("staterestore")).toHaveTextContent(
         JSON.stringify({ one: 2, five: 5 })
@@ -292,9 +265,8 @@ describe("Provider correctness", () => {
       )
 
       rtl.fireEvent.click(tester.getByText("minus"))
-      await rtl.waitForElement(() => tester.getByText("4"))
-      expect(tester.getByTestId("state")).toHaveTextContent(
-        JSON.stringify({ one: 2, five: 4 })
+      await rtl.waitForElement(() =>
+        tester.getByText(JSON.stringify({ one: 2, five: 4 }))
       )
       expect(tester.getByTestId("staterestore")).toHaveTextContent(
         JSON.stringify({ one: 2, five: 4 })
@@ -337,21 +309,19 @@ describe("Provider correctness", () => {
           actions={{ action }}
           asyncActionGenerators={{ async }}
         >
-          <bothContext.Consumer>
-            {({ state, actions }) => {
+          <dispatchContext.Consumer>
+            {({ generators }) => {
               return (
                 <div>
                   <button
-                    onClick={() =>
-                      (ret = actions.generators.async("argument", "two"))
-                    }
+                    onClick={() => (ret = generators.async("argument", "two"))}
                   >
                     click
                   </button>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
         </Provider>
       )
 
@@ -386,132 +356,6 @@ describe("Provider correctness", () => {
       expect(async.start.mock.calls[0][4]).toEqual("two")
     })
   })
-  describe("lifting", () => {
-    class Mine extends React.Component {
-      constructor(props) {
-        super(props)
-        this.state = {
-          hi: "there"
-        }
-        this.sayHi = hi =>
-          this.setState({ hi }, () => this.props.liftState("mine", this.state))
-      }
-
-      render() {
-        return (
-          <div>
-            <button onClick={() => this.props.liftState("mine", this.state)}>
-              click
-            </button>
-            <button onClick={() => this.setState({ hi: "wow" })}>change</button>
-            <button onClick={() => this.props.sayHi("foo")}>do foo</button>
-            <button
-              onClick={() =>
-                this.props.liftActions("mine", { sayHi: this.sayHi })
-              }
-            >
-              lift actions
-            </button>
-            <button onClick={() => this.props.liftActions("mine", false)}>
-              remove actions
-            </button>
-            <div>{this.props.sayHi ? "has it!" : "does not have it"}</div>
-            <div>local: {this.state.hi}</div>
-            <div>
-              global: {this.props.state.mine && this.props.state.mine.hi}
-            </div>
-          </div>
-        )
-      }
-    }
-    function TestLifting() {
-      return (
-        <Provider initialState={{}}>
-          <bothContext.Consumer>
-            {({ state, actions }) => {
-              return (
-                <Mine
-                  liftState={actions.actions.liftState}
-                  liftActions={actions.actions.liftActions}
-                  sayHi={actions.actions.mine && actions.actions.mine.sayHi}
-                  state={state}
-                />
-              )
-            }}
-          </bothContext.Consumer>
-        </Provider>
-      )
-    }
-    describe("liftState", () => {
-      test("liftState sets global state", async () => {
-        const tester = rtl.render(<TestLifting />)
-        expect(tester.queryByText("local: there")).not.toBe(null)
-        expect(tester.queryByText("global:")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("click"))
-        await rtl.waitForElement(() => tester.getByText("global: there"))
-        expect(tester.queryByText("local: there")).not.toBe(null)
-        expect(tester.queryByText("global: there")).not.toBe(null)
-      })
-      test("liftState responds to changes to local state", async () => {
-        const tester = rtl.render(<TestLifting />)
-        expect(tester.queryByText("local: there")).not.toBe(null)
-        expect(tester.queryByText("global:")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("click"))
-        await rtl.waitForElement(() => tester.getByText("global: there"))
-        expect(tester.queryByText("local: there")).not.toBe(null)
-        expect(tester.queryByText("global: there")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("change"))
-        await rtl.waitForElement(() => tester.getByText("local: wow"))
-        expect(tester.queryByText("local: wow")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("click"))
-        await rtl.waitForElement(() => tester.getByText("global: wow"))
-        expect(tester.queryByText("global: wow")).not.toBe(null)
-      })
-    })
-    describe("liftActions", () => {
-      test("liftActions provides keyed actions", async () => {
-        const tester = rtl.render(<TestLifting />)
-        expect(tester.queryByText("does not have it")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("lift actions"))
-
-        await rtl.waitForElement(() => tester.getByText("has it!"))
-        expect(tester.queryByText("has it!")).not.toBe(null)
-      })
-      test("lifted action works", async () => {
-        const tester = rtl.render(<TestLifting />)
-
-        rtl.fireEvent.click(tester.getByText("lift actions"))
-
-        await rtl.waitForElement(() => tester.getByText("has it!"))
-        rtl.fireEvent.click(tester.getByText("do foo"))
-
-        await rtl.waitForElement(() => tester.getByText("local: foo"))
-        expect(tester.queryByText("local: foo")).not.toBe(null)
-
-        await rtl.waitForElement(() => tester.getByText("global: foo"))
-        expect(tester.queryByText("global: foo")).not.toBe(null)
-      })
-      test("removing lifted actions works", async () => {
-        const tester = rtl.render(<TestLifting />)
-        expect(tester.queryByText("does not have it")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("lift actions"))
-
-        await rtl.waitForElement(() => tester.getByText("has it!"))
-        expect(tester.queryByText("has it!")).not.toBe(null)
-
-        rtl.fireEvent.click(tester.getByText("remove actions"))
-
-        await rtl.waitForElement(() => tester.getByText("does not have it"))
-        expect(tester.queryByText("does not have it")).not.toBe(null)
-      })
-    })
-  })
   describe("monitor", () => {
     const one = state => ({ ...state, one: "thing" })
     const two = state => ({ ...state, one: "other thing" })
@@ -526,31 +370,27 @@ describe("Provider correctness", () => {
           }}
           monitor={monitor}
         >
-          <bothContext.Consumer>
-            {({ actions, state }) => {
+          <dispatchContext.Consumer>
+            {({ actions }) => {
               return (
                 <div>
-                  <button onClick={actions.actions.one}>one</button>
-                  <button onClick={actions.actions.two}>two</button>
-                  <button
-                    onClick={() =>
-                      actions.actions.liftState("hi", { there: 1 })
-                    }
-                  >
+                  <button onClick={actions.one}>one</button>
+                  <button onClick={actions.two}>two</button>
+                  <button onClick={() => actions.liftState("hi", { there: 1 })}>
                     liftState
                   </button>
                   <button
-                    onClick={() =>
-                      actions.actions.liftActions("hi", { do() {} })
-                    }
+                    onClick={() => actions.liftActions("hi", { do() {} })}
                   >
                     liftActions
                   </button>
-                  <div>{state.one}</div>
+                  <stateContext.Consumer>
+                    {state => <div>{state.one}</div>}
+                  </stateContext.Consumer>
                 </div>
               )
             }}
-          </bothContext.Consumer>
+          </dispatchContext.Consumer>
         </Provider>
       )
     }
@@ -602,24 +442,21 @@ describe("Provider correctness", () => {
     let saveThing, saveLiftState, saveLiftActions
     const tester = rtl.render(
       <Provider actions={{ thing }} initialState={{ hi: "there" }}>
-        <bothContext.Consumer>
-          {({
-            state,
-            actions: {
-              actions: { liftState, liftActions, thing }
-            }
-          }) => {
+        <dispatchContext.Consumer>
+          {({ actions: { liftState, liftActions, thing } }) => {
             saveThing = thing
             saveLiftState = liftState
             saveLiftActions = liftActions
             return (
               <div>
                 <div>hi</div>
-                <div data-testid="hi">{JSON.stringify(state)}</div>
+                <stateContext.Consumer>
+                  {state => <div data-testid="hi">{JSON.stringify(state)}</div>}
+                </stateContext.Consumer>
               </div>
             )
           }}
-        </bothContext.Consumer>
+        </dispatchContext.Consumer>
       </Provider>
     )
     await rtl.waitForElement(() => tester.getByText("hi"))

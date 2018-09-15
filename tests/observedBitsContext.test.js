@@ -234,11 +234,7 @@ describe("creating and consuming contexts using observedBits", () => {
     const FancyContext = mapper.context()
     const updates = []
 
-    class Li extends React.Component {
-      shouldComponentUpdate() {
-        return false
-      }
-
+    class Li extends React.PureComponent {
       render() {
         const { i } = this.props
         return (
