@@ -7,7 +7,7 @@ import Provider, {
 } from "../src/Provider"
 import "jest-dom/extend-expect"
 import "react-testing-library/cleanup-after-each"
-import "./setup"
+import { expectConsoleError } from "./setup"
 
 describe("Provider correctness", () => {
   describe("contexts", () => {
@@ -413,7 +413,7 @@ describe("Provider correctness", () => {
       rtl.fireEvent.click(tester.getByText("liftState"))
 
       expect(monitor.mock.calls[2][0]).toBe("liftState")
-      expect(typeof monitor.mock.calls[2][1]).toBe("function")
+      expect(monitor.mock.calls[2][1]).toBe(false)
       expect(monitor.mock.calls[2][2]).toEqual({
         one: "other thing",
         hi: { there: 1 }
@@ -427,14 +427,6 @@ describe("Provider correctness", () => {
         one: "other thing",
         hi: { there: 1 }
       })
-      expect(Object.keys(monitor.mock.calls[3][3])).toEqual([
-        "liftState",
-        "liftActions",
-        "one",
-        "two",
-        "hi"
-      ])
-      expect(Object.keys(monitor.mock.calls[3][3].hi)).toEqual(["do"])
     })
   })
   test("nothing happens if we are unmounted", async () => {
@@ -489,6 +481,19 @@ describe("Provider correctness", () => {
       )
     })
     test("async action is not an object", () => {
+      expectConsoleError(
+        () => {
+          expect(
+            <Provider asyncActionGenerators={{ blah: false }} />
+          ).toThrowInRender(
+            /async action generator "blah" must by an object, with members "make", "init" and "start"/
+          )
+        },
+        [
+          /Invalid prop `asyncActionGenerators.blah` of type `boolean` supplied to `Provider`, expected `object`/,
+          /Invalid prop `asyncActionGenerators.blah` of type `boolean` supplied to `ActionProvider`, expected `object`/
+        ]
+      )
       expect(
         <Provider asyncActionGenerators={{ blah: false }} />
       ).toThrowInRender(
@@ -496,29 +501,67 @@ describe("Provider correctness", () => {
       )
     })
     test("async action is missing make", () => {
-      expect(
-        <Provider asyncActionGenerators={{ blah: { init() {}, start() {} } }} />
-      ).toThrowInRender(
-        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      expectConsoleError(
+        () => {
+          expect(
+            <Provider
+              asyncActionGenerators={{ blah: { init() {}, start() {} } }}
+            />
+          ).toThrowInRender(
+            /async action generator "blah" must by an object, with members "make", "init" and "start"/
+          )
+        },
+        [
+          /The prop `asyncActionGenerators.blah.make` is marked as required in `Provider`, but its value is `undefined`/,
+          /The prop `asyncActionGenerators.blah.make` is marked as required in `ActionProvider`, but its value is `undefined`/
+        ]
       )
     })
     test("async action is missing init", () => {
-      expect(
-        <Provider asyncActionGenerators={{ blah: { make() {}, start() {} } }} />
-      ).toThrowInRender(
-        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      expectConsoleError(
+        () => {
+          expect(
+            <Provider
+              asyncActionGenerators={{ blah: { make() {}, start() {} } }}
+            />
+          ).toThrowInRender(
+            /async action generator "blah" must by an object, with members "make", "init" and "start"/
+          )
+        },
+        [
+          /The prop `asyncActionGenerators.blah.init` is marked as required in `Provider`, but its value is `undefined`/,
+          /The prop `asyncActionGenerators.blah.init` is marked as required in `ActionProvider`, but its value is `undefined`/
+        ]
       )
     })
     test("async action is missing start", () => {
-      expect(
-        <Provider asyncActionGenerators={{ blah: { make() {}, init() {} } }} />
-      ).toThrowInRender(
-        /async action generator "blah" must by an object, with members "make", "init" and "start"/
+      expectConsoleError(
+        () => {
+          expect(
+            <Provider
+              asyncActionGenerators={{ blah: { make() {}, init() {} } }}
+            />
+          ).toThrowInRender(
+            /async action generator "blah" must by an object, with members "make", "init" and "start"/
+          )
+        },
+        [
+          /The prop `asyncActionGenerators.blah.start` is marked as required in `Provider`, but its value is `undefined`/,
+          /The prop `asyncActionGenerators.blah.start` is marked as required in `ActionProvider`, but its value is `undefined`/
+        ]
       )
     })
-    test("action is not a function", () => {
-      expect(<Provider actions={{ blah: false }} />).toThrowInRender(
-        /action "blah" must be a function/
+    test("actions is not a function", () => {
+      expectConsoleError(
+        () => {
+          expect(<Provider actions={{ blah: false }} />).toThrowInRender(
+            /action "blah" must be a function/
+          )
+        },
+        [
+          /Invalid prop `actions.blah` of type `boolean` supplied to `Provider`, expected `function`/,
+          /Invalid prop `actions.blah` of type `boolean` supplied to `ActionProvider`, expected `function`/
+        ]
       )
     })
     test("actions is null", () => {
@@ -527,13 +570,29 @@ describe("Provider correctness", () => {
       )
     })
     test("actions is number", () => {
-      expect(<Provider actions={5} />).toThrowInRender(
-        /actions must be an object, was passed a number/
+      expectConsoleError(
+        () => {
+          expect(<Provider actions={5} />).toThrowInRender(
+            /actions must be an object, was passed a number/
+          )
+        },
+        [
+          /Invalid prop `actions` of type `number` supplied to `Provider`, expected an object/,
+          /Invalid prop `actions` of type `number` supplied to `ActionProvider`, expected an object/
+        ]
       )
     })
     test("actions is a function", () => {
-      expect(<Provider actions={() => null} />).toThrowInRender(
-        /actions must be an object, was passed a function/
+      expectConsoleError(
+        () => {
+          expect(<Provider actions={() => null} />).toThrowInRender(
+            /actions must be an object, was passed a function/
+          )
+        },
+        [
+          /Invalid prop `actions` of type `function` supplied to `Provider`, expected an object/,
+          /Invalid prop `actions` of type `function` supplied to `ActionProvider`, expected an object/
+        ]
       )
     })
   })

@@ -62,6 +62,7 @@ describe("ActionProvider", () => {
       <div>
         <ActionProvider
           asyncActionGenerators={{ action }}
+          actions={{}}
           setState={setState}
           monitor={monitorGenerator}
         >
@@ -192,6 +193,7 @@ describe("ActionProvider", () => {
       <Catch>
         <ActionProvider
           asyncActionGenerators={{ action }}
+          actions={{}}
           setState={setState}
           monitor={monitorGenerator}
         >
@@ -264,7 +266,7 @@ describe("ActionProvider", () => {
     }
     function TestLifting({ setState }) {
       return (
-        <ActionProvider setState={setState} monitor={() => null}>
+        <ActionProvider setState={setState} monitor={() => null} actions={{}}>
           <dispatchContext.Consumer>
             {({ actions }) => {
               return (

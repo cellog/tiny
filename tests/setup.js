@@ -1,3 +1,5 @@
+import Provider from "../src/Provider"
+
 const React = require("react")
 const ReactDOM = require("react-dom")
 
@@ -68,3 +70,21 @@ expect.extend({
     }
   }
 })
+
+export function expectConsoleError(f, proptypes) {
+  const errors = []
+  const old = console.error
+  try {
+    console.error = e => errors.push(e)
+    f()
+    if (errors.length !== proptypes.length) {
+      console.log(errors)
+    }
+    expect(errors.length).toBe(proptypes.length)
+    proptypes.forEach((message, i) => {
+      expect(errors[i]).toMatch(message)
+    })
+  } finally {
+    console.error = old
+  }
+}
