@@ -1,7 +1,7 @@
 # Tiny
 ### A tiny react-based state management library
 
-Refactor-focused, test-focused state management, with full support for asynchrony.
+Refactor-focused, test-focused state management, with full support for suspense.
 
 ```js
 import Provider, { async } from "./Provider.jsx"
