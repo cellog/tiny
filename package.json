@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.html",
   "scripts": {
-    "start": "parcel index.html --open",
-    "build": "parcel build index.html",
+    "start-tester-app": "parcel index.html --open",
+    "build-tester-app": "parcel build index.html",
+    "build": "rollup",
     "test": "jest"
   },
   "jest": {
@@ -36,12 +37,13 @@
   "devDependencies": {
     "@babel/cli": "^7.0.0",
     "@babel/core": "^7.0.1",
+    "@babel/plugin-external-helpers": "^7.0.0",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+    "@babel/plugin-transform-runtime": "^7.1.0",
     "@babel/preset-env": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "babel-jest": "^23.6.0",
-    "babel-plugin-transform-class-properties": "^6.24.1",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
-    "babel-plugin-transform-runtime": "^6.23.0",
     "jest": "^23.5.0",
     "jest-dom": "^1.12.0",
     "parcel-bundler": "^1.6.1",
@@ -50,7 +52,8 @@
     "react-dom": "16.5",
     "react-testing-library": "^5.0.1",
     "rollup": "^0.65.2",
-    "rollup-plugin-babel": "^4.0.3"
+    "rollup-plugin-babel": "^4.0.3",
+    "rollup-plugin-node-resolve": "^3.4.0"
   },
   "keywords": []
 }

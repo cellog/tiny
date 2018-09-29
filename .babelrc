@@ -1,22 +1,15 @@
 {
   "presets": [
-    "env"
+    ["@babel/preset-env", {
+      "modules": false,
+    }],
+    "@babel/preset-react"
   ],
   "plugins": [
-    [
-      "transform-runtime",
-      {
-        "polyfill": false,
-        "regenerator": true
-      }
-    ],
-    "transform-object-rest-spread",
-    [
-      "transform-react-jsx",
-      {
-        "pragma": "React.createElement"
-      }
-    ],
-    "transform-class-properties"
+    "@babel/plugin-external-helpers",
+    "@babel/plugin-transform-runtime",
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/plugin-transform-react-jsx",
+    "@babel/plugin-proposal-class-properties"
   ]
 }
